@@ -3,68 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwedenFixK Panel</title>
+    <title>SwedenFixK Mobile</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: var(--tg-theme-bg-color, #ffffff);
-            --text: var(--tg-theme-text-color, #000000);
-            --hint: var(--tg-theme-hint-color, #999999);
-            --btn: var(--tg-theme-button-color, #248bed);
-            --btn-text: var(--tg-theme-button-text-color, #ffffff);
-            --sec-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            --bg: var(--tg-theme-bg-color, #fff);
+            --text: var(--tg-theme-text-color, #000);
+            --sec: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            --accent: #248bed;
         }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
-        .card { background: var(--sec-bg); border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .balance { font-size: 32px; font-weight: bold; color: var(--btn); margin: 10px 0; }
-        .btn { background: var(--btn); color: var(--btn-text); border: none; padding: 15px; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; font-size: 16px; }
-        /* СТИЛИ АДМИНКИ */
-        .admin-box { display: none; border: 2px dashed #ff4757; background: #fff1f2; margin-top: 20px; padding: 15px; border-radius: 15px; color: #000; }
-        .admin-title { color: #ff4757; font-weight: bold; margin-bottom: 10px; display: block; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        .card { background: var(--sec); border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .btn { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); box-sizing: border-box; }
+        
+        #reg-form, #main-ui, #admin-ui { display: none; }
+        .admin-item { border-bottom: 1px solid rgba(0,0,0,0.1); padding: 10px 0; }
+        .admin-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 5px; }
+        .btn-red { background: #ff4757; }
+        .btn-green { background: #2ed573; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div style="font-size: 14px; color: var(--hint);">Твой баланс</div>
-        <div class="balance" id="b-display">0.00 Gold</div>
-        <button class="btn" onclick="askWithdraw()">📉 Вывести Gold</button>
+
+    <div id="reg-form" class="card">
+        <h2>📝 Регистрация</h2>
+        <input type="text" id="reg-nick" placeholder="Ваш никнейм">
+        <select id="reg-role">
+            <option value="Игрок">Игрок</option>
+            <option value="Менеджер">Менеджер</option>
+            <option value="Куратор">Куратор</option>
+        </select>
+        <button class="btn" onclick="submitReg()">Создать аккаунт</button>
     </div>
 
-    <div id="admin-ui" class="admin-box">
-        <span class="admin-title">⚙️ ПАНЕЛЬ АДМИНИСТРАТОРА</span>
-        <button class="btn" style="background:#2ed573;" onclick="getUsers()">👥 Список пользователей</button>
-        <div id="debug" style="font-size: 10px; color: gray; margin-top: 10px;"></div>
+    <div id="main-ui">
+        <div class="card" style="background: linear-gradient(135deg, #6a11cb, #2575fc); color:white;">
+            <div id="u-name" style="font-weight: bold;">Загрузка...</div>
+            <div id="u-role" style="font-size: 12px; opacity: 0.8;">Должность</div>
+            <h1 id="u-balance">0.00 Gold</h1>
+        </div>
+        <button class="btn" onclick="tg.close()">Закрыть меню</button>
+    </div>
+
+    <div id="admin-ui" class="card" style="border: 2px solid #ff4757;">
+        <h3 style="color:#ff4757;">⚙️ Админ-панель</h3>
+        <button class="btn" onclick="refreshList()">🔄 Обновить список юзеров</button>
+        <div id="users-container"></div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.ready();
-
-        // ЧИТАЕМ ПАРАМЕТРЫ ИЗ URL
-        const params = new URLSearchParams(window.location.search);
-        const bal = params.get('balance') || "0";
-        const role = params.get('admin'); // получим 'true' или 'false'
-
-        document.getElementById('b-display').innerText = bal + " Gold";
         
-        // ЛОГИКА ОТОБРАЖЕНИЯ АДМИНКИ
-        const adminBlock = document.getElementById('admin-ui');
-        if (role === 'true') {
-            adminBlock.style.display = 'block';
+        const params = new URLSearchParams(window.location.search);
+        const userExists = params.get('exists') === 'true';
+        const isAdmin = params.get('admin') === 'true';
+
+        // Логика отображения
+        if (!userExists) {
+            document.getElementById('reg-form').style.display = 'block';
+        } else {
+            document.getElementById('main-ui').style.display = 'block';
+            document.getElementById('u-name').innerText = params.get('nick');
+            document.getElementById('u-role').innerText = params.get('role');
+            document.getElementById('u-balance').innerText = params.get('balance') + " Gold";
+            if (isAdmin) document.getElementById('admin-ui').style.display = 'block';
         }
 
-        // ОТЛАДКА (выведет внизу экрана инфо)
-        document.getElementById('debug').innerText = "Role: " + role + " | ID: " + (tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "no-id");
-
-        function askWithdraw() {
-            let a = prompt("Сумма вывода:");
-            if(a) tg.sendData(JSON.stringify({action: 'withdraw', amount: parseFloat(a)}));
+        function submitReg() {
+            const nick = document.getElementById('reg-nick').value;
+            const role = document.getElementById('reg-role').value;
+            if(!nick) return alert("Введите ник!");
+            tg.sendData(JSON.stringify({action: 'register', nick: nick, role: role}));
         }
 
-        function getUsers() {
+        function refreshList() {
             tg.sendData(JSON.stringify({action: 'get_users_list'}));
         }
+
+        function adminAction(tid, type) {
+            let amt = 0;
+            if (type !== 'reset') {
+                amt = prompt("Введите сумму:");
+                if (!amt) return;
+            }
+            tg.sendData(JSON.stringify({
+                action: 'admin_manage',
+                target_id: tid,
+                type: type,
+                amount: parseFloat(amt || 0)
+            }));
+        }
+
+        // Слушаем сообщения от бота (список юзеров)
+        // Примечание: в этом примере список придет в чат бота текстом для простоты
     </script>
 </body>
 </html>
