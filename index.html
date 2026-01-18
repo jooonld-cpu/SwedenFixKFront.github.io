@@ -58,33 +58,27 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // Расширяем на все окно
+    const tg = window.Telegram.WebApp;
+    tg.expand();
 
-        // Получаем данные пользователя из Telegram
-        const user = tg.initDataUnsafe?.user;
-        if (user) {
-            console.log("Пользователь:", user.first_name);
+    // 1. Сразу при открытии просим бота прислать баланс
+    // Мы используем sendData, чтобы бот понял, что мы открылись
+    tg.sendData(JSON.stringify({action: 'get_balance'}));
+
+    // 2. Слушаем ответ от бота через основной чат (визуально это будет обновление текста)
+    // В текущей архитектуре Mini App (без отдельного сервера API) 
+    // баланс проще всего передать в ответном сообщении или через обновление.
+    
+    document.getElementById('withdraw-btn').addEventListener('click', () => {
+        const amount = document.getElementById('withdraw-amount').value;
+        if (amount > 0) {
+            tg.sendData(JSON.stringify({action: 'withdraw', amount: parseFloat(amount)}));
+            tg.close();
         }
+    });
+    tg.ready();
+</script>
 
-        // Кнопка снятия
-        document.getElementById('withdraw-btn').addEventListener('click', () => {
-            const amount = document.getElementById('withdraw-amount').value;
-            if (amount > 0) {
-                // Отправляем данные боту
-                const data = {
-                    action: 'withdraw',
-                    amount: parseFloat(amount)
-                };
-                tg.sendData(JSON.stringify(data)); 
-                // Метод sendData закрывает WebApp и отправляет сообщение боту
-            } else {
-                alert("Введите корректную сумму");
-            }
-        });
-
-        // Сообщаем Telegram, что приложение готово
-        tg.ready();
-    </script>
+    
 </body>
 </html>
