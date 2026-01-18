@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой Кабинет</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .container { width: 100%; max-width: 400px; }
+        .card {
+            background-color: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 80%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>💰 Ваш баланс</h2>
+            <div id="user-balance" style="font-size: 24px; font-weight: bold;">Загрузка...</div>
+        </div>
+
+        <div class="card">
+            <h3>📉 Снятие средств</h3>
+            <input type="number" id="withdraw-amount" placeholder="Введите сумму">
+            <button id="withdraw-btn">Отправить запрос</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Расширяем на все окно
+
+        // Получаем данные пользователя из Telegram
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            console.log("Пользователь:", user.first_name);
+        }
+
+        // Кнопка снятия
+        document.getElementById('withdraw-btn').addEventListener('click', () => {
+            const amount = document.getElementById('withdraw-amount').value;
+            if (amount > 0) {
+                // Отправляем данные боту
+                const data = {
+                    action: 'withdraw',
+                    amount: parseFloat(amount)
+                };
+                tg.sendData(JSON.stringify(data)); 
+                // Метод sendData закрывает WebApp и отправляет сообщение боту
+            } else {
+                alert("Введите корректную сумму");
+            }
+        });
+
+        // Сообщаем Telegram, что приложение готово
+        tg.ready();
+    </script>
+</body>
+</html>
