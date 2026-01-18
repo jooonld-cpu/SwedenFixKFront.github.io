@@ -3,125 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwedenFixK Mobile</title>
+    <title>SwedenFixK Admin</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: var(--tg-theme-bg-color, #fff);
-            --text-color: var(--tg-theme-text-color, #000);
-            --hint-color: var(--tg-theme-hint-color, #999);
-            --button-color: var(--tg-theme-button-color, #248bed);
-            --button-text: var(--tg-theme-button-text-color, #fff);
-            --secondary-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            --bg: var(--tg-theme-bg-color, #fff);
+            --text: var(--tg-theme-text-color, #000);
+            --accent: #248bed;
+            --secondary: var(--tg-theme-secondary-bg-color, #f4f4f5);
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .app-container { width: 100%; max-width: 400px; }
-
-        .balance-card {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            color: white;
-            border-radius: 20px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 10px 20px rgba(37, 117, 252, 0.3);
-            margin-bottom: 25px;
-        }
-
-        .balance-label { font-size: 14px; opacity: 0.8; margin-bottom: 5px; }
-        .balance-amount { font-size: 32px; font-weight: 800; letter-spacing: 1px; }
-
-        .action-card {
-            background-color: var(--secondary-bg);
-            border-radius: 20px;
-            padding: 20px;
-        }
-
-        h3 { margin-top: 0; font-size: 18px; margin-bottom: 15px; }
-
-        .input-group {
-            background: var(--bg-color);
-            border-radius: 12px;
-            padding: 10px;
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-
-        input {
-            border: none;
-            background: transparent;
-            color: var(--text-color);
-            font-size: 16px;
-            width: 100%;
-            outline: none;
-            padding: 5px;
-        }
-
-        button {
-            background-color: var(--button-color);
-            color: var(--button-text);
-            border: none;
-            width: 100%;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        button:active { transform: scale(0.98); }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        .card { background: var(--secondary); border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .btn { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; }
+        .admin-only { display: none; border: 2px solid #ff4757; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+        th, td { padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: left; }
+        .controls { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-sm { padding: 5px; font-size: 10px; flex: 1; }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <div class="balance-card">
-            <div class="balance-label">ДОСТУПНЫЙ БАЛАНС</div>
-            <div class="balance-amount" id="user-balance">0.00 Gold</div>
-        </div>
+    <div class="card">
+        <h2 id="user-nick">Загрузка...</h2>
+        <p>Баланс: <b id="user-balance">0</b> Gold</p>
+        <button class="btn" onclick="openWithdraw()">📉 Снять Gold</button>
+    </div>
 
-        <div class="action-card">
-            <h3>📉 Вывод средств</h3>
-            <div class="input-group">
-                <input type="number" id="withdraw-amount" placeholder="Введите сумму..." min="1">
-            </div>
-            <button id="withdraw-btn">Отправить заявку</button>
-        </div>
+    <div id="admin-section" class="card admin-only">
+        <h3>⚙️ Админ-панель</h3>
+        <div id="users-list">Нажмите «Обновить», чтобы увидеть список</div>
+        <button class="btn" style="background:#2ed573; margin-top:10px;" onclick="refreshUsers()">🔄 Обновить список</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
         tg.expand();
 
-        // Парсим баланс из URL (передается ботом)
         const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'true';
         const balance = urlParams.get('balance') || "0";
-        document.getElementById('user-balance').innerText = balance + " Gold";
 
-        document.getElementById('withdraw-btn').addEventListener('click', () => {
-            const amt = document.getElementById('withdraw-amount').value;
-            if (amt && amt > 0) {
-                // Отправляем данные боту
+        document.getElementById('user-balance').innerText = balance;
+        
+        // Показываем админку, если пользователь — админ
+        if (isAdmin) {
+            document.getElementById('admin-section').style.display = 'block';
+        }
+
+        function refreshUsers() {
+            tg.sendData(JSON.stringify({action: 'get_users_list'}));
+        }
+
+        function openWithdraw() {
+            let amt = prompt("Введите сумму для снятия:");
+            if(amt) tg.sendData(JSON.stringify({action: 'withdraw', amount: parseFloat(amt)}));
+        }
+
+        // Функция для админа: изменить баланс
+        function manageUser(tid, nick) {
+            let action = prompt(`Управление ${nick}:\n1 - Пополнить\n2 - Снять\nВведите 1 или 2:`);
+            let amt = prompt("Введите сумму:");
+            if (action && amt) {
                 tg.sendData(JSON.stringify({
-                    action: 'withdraw',
+                    action: 'admin_manage',
+                    target_id: tid,
+                    type: action === '1' ? 'add' : 'sub',
                     amount: parseFloat(amt)
                 }));
-            } else {
-                tg.showAlert("Пожалуйста, введите корректную сумму");
             }
-        });
+        }
     </script>
 </body>
 </html>
