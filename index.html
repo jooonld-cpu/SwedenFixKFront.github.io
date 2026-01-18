@@ -3,74 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwedenFixK Admin</title>
+    <title>SwedenFixK Panel</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: var(--tg-theme-bg-color, #fff);
-            --text: var(--tg-theme-text-color, #000);
-            --accent: #248bed;
-            --secondary: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            --bg: var(--tg-theme-bg-color, #ffffff);
+            --text: var(--tg-theme-text-color, #000000);
+            --hint: var(--tg-theme-hint-color, #999999);
+            --btn: var(--tg-theme-button-color, #248bed);
+            --btn-text: var(--tg-theme-button-text-color, #ffffff);
+            --sec-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
         }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
-        .card { background: var(--secondary); border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .btn { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; }
-        .admin-only { display: none; border: 2px solid #ff4757; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-        th, td { padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: left; }
-        .controls { display: flex; gap: 5px; margin-top: 10px; }
-        .btn-sm { padding: 5px; font-size: 10px; flex: 1; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .card { background: var(--sec-bg); border-radius: 15px; padding: 20px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .balance { font-size: 32px; font-weight: bold; color: var(--btn); margin: 10px 0; }
+        .btn { background: var(--btn); color: var(--btn-text); border: none; padding: 15px; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; font-size: 16px; }
+        /* СТИЛИ АДМИНКИ */
+        .admin-box { display: none; border: 2px dashed #ff4757; background: #fff1f2; margin-top: 20px; padding: 15px; border-radius: 15px; color: #000; }
+        .admin-title { color: #ff4757; font-weight: bold; margin-bottom: 10px; display: block; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 id="user-nick">Загрузка...</h2>
-        <p>Баланс: <b id="user-balance">0</b> Gold</p>
-        <button class="btn" onclick="openWithdraw()">📉 Снять Gold</button>
+        <div style="font-size: 14px; color: var(--hint);">Твой баланс</div>
+        <div class="balance" id="b-display">0.00 Gold</div>
+        <button class="btn" onclick="askWithdraw()">📉 Вывести Gold</button>
     </div>
 
-    <div id="admin-section" class="card admin-only">
-        <h3>⚙️ Админ-панель</h3>
-        <div id="users-list">Нажмите «Обновить», чтобы увидеть список</div>
-        <button class="btn" style="background:#2ed573; margin-top:10px;" onclick="refreshUsers()">🔄 Обновить список</button>
+    <div id="admin-ui" class="admin-box">
+        <span class="admin-title">⚙️ ПАНЕЛЬ АДМИНИСТРАТОРА</span>
+        <button class="btn" style="background:#2ed573;" onclick="getUsers()">👥 Список пользователей</button>
+        <div id="debug" style="font-size: 10px; color: gray; margin-top: 10px;"></div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.ready();
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'true';
-        const balance = urlParams.get('balance') || "0";
+        // ЧИТАЕМ ПАРАМЕТРЫ ИЗ URL
+        const params = new URLSearchParams(window.location.search);
+        const bal = params.get('balance') || "0";
+        const role = params.get('admin'); // получим 'true' или 'false'
 
-        document.getElementById('user-balance').innerText = balance;
+        document.getElementById('b-display').innerText = bal + " Gold";
         
-        // Показываем админку, если пользователь — админ
-        if (isAdmin) {
-            document.getElementById('admin-section').style.display = 'block';
+        // ЛОГИКА ОТОБРАЖЕНИЯ АДМИНКИ
+        const adminBlock = document.getElementById('admin-ui');
+        if (role === 'true') {
+            adminBlock.style.display = 'block';
         }
 
-        function refreshUsers() {
+        // ОТЛАДКА (выведет внизу экрана инфо)
+        document.getElementById('debug').innerText = "Role: " + role + " | ID: " + (tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "no-id");
+
+        function askWithdraw() {
+            let a = prompt("Сумма вывода:");
+            if(a) tg.sendData(JSON.stringify({action: 'withdraw', amount: parseFloat(a)}));
+        }
+
+        function getUsers() {
             tg.sendData(JSON.stringify({action: 'get_users_list'}));
-        }
-
-        function openWithdraw() {
-            let amt = prompt("Введите сумму для снятия:");
-            if(amt) tg.sendData(JSON.stringify({action: 'withdraw', amount: parseFloat(amt)}));
-        }
-
-        // Функция для админа: изменить баланс
-        function manageUser(tid, nick) {
-            let action = prompt(`Управление ${nick}:\n1 - Пополнить\n2 - Снять\nВведите 1 или 2:`);
-            let amt = prompt("Введите сумму:");
-            if (action && amt) {
-                tg.sendData(JSON.stringify({
-                    action: 'admin_manage',
-                    target_id: tid,
-                    type: action === '1' ? 'add' : 'sub',
-                    amount: parseFloat(amt)
-                }));
-            }
         }
     </script>
 </body>
