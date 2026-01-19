@@ -1,180 +1,95 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwedenFixK Mobile</title>
+    <title>Швеция: Кабинет</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --bg: var(--tg-theme-bg-color, #ffffff);
-            --text: var(--tg-theme-text-color, #222222);
-            --sec-bg: var(--tg-theme-secondary-bg-color, #f0f0f2);
-            --accent: #007aff;
-            --danger: #ff3b30;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 16px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container { width: 100%; max-width: 420px; }
-
-        /* КАРТОЧКА ПРОФИЛЯ */
-        .profile-card {
-            background: linear-gradient(135deg, #1d2b64 0%, #f8cdda 100%);
-            border-radius: 24px;
-            padding: 24px;
-            color: white;
-            text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-            margin-bottom: 20px;
-            display: none; /* Скрыта до авторизации */
-        }
-
-        .profile-card h2 { margin: 0; font-size: 24px; }
-        .role-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: inline-block;
-            margin-top: 5px;
-        }
-        .balance-val { font-size: 36px; font-weight: 800; margin: 15px 0; }
-
-        /* ФОРМА РЕГИСТРАЦИИ */
-        .reg-box {
-            background: var(--sec-bg);
-            border-radius: 24px;
-            padding: 24px;
-            display: none; /* Скрыта если юзер есть */
-        }
-
-        .reg-box h2 { margin-top: 0; text-align: center; }
-
-        .input-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 6px; font-size: 14px; color: var(--tg-theme-hint-color, #999); }
-        
-        input {
-            width: 100%;
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid rgba(0,0,0,0.1);
-            background: var(--bg);
-            color: var(--text);
-            font-size: 16px;
-            box-sizing: border-box;
-            outline: none;
-        }
-
-        .btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            width: 100%;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        .btn:active { opacity: 0.8; }
-
-        /* АДМИН ПАНЕЛЬ */
-        .admin-panel {
-            display: none;
-            border: 2px dashed var(--danger);
-            padding: 15px;
-            border-radius: 20px;
-            margin-top: 20px;
-        }
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
+        .hidden { display: none; }
+        .card { background: white; padding: 20px; border-radius: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; }
+        button { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px; background: #00529b; color: white; font-weight: bold; }
+        .bank-info { color: #28a745; font-size: 1.2em; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="reg-screen" class="reg-box">
-            <h2>📝 Регистрация</h2>
-            <div class="input-group">
-                <label>Ваш Никнейм</label>
-                <input type="text" id="reg-nick" placeholder="Напр: Alexander_Great">
-            </div>
-            <div class="input-group">
-                <label>Ваша Должность</label>
-                <input type="text" id="reg-role" placeholder="Напр: Менеджер">
-            </div>
-            <button class="btn" onclick="register()">Создать профиль</button>
-        </div>
 
-        <div id="profile-screen" class="profile-card">
-            <h2 id="u-nick">Никнейм</h2>
-            <div class="role-badge" id="u-role">Должность</div>
-            <div class="balance-val" id="u-balance">0.00 Gold</div>
-            <button class="btn" style="background: rgba(255,255,255,0.2);" onclick="tg.close()">Закрыть</button>
-        </div>
+    <div id="reg-screen" class="hidden">
+        <h2>Регистрация гражданина</h2>
+        <input type="text" id="nick" placeholder="Ваш Ник">
+        <select id="role">
+            <option value="Гражданин">Гражданин</option>
+            <option value="Сотрудник">Сотрудник</option>
+        </select>
+        <button onclick="register()">Зарегистрироваться</button>
+    </div>
 
-        <div id="admin-screen" class="admin-panel">
-            <h3 style="color: var(--danger); margin-top: 0;">⚙️ Админ-зона</h3>
-            <button class="btn" style="background: var(--danger);" onclick="adminList()">Список игроков</button>
+    <div id="main-menu" class="hidden">
+        <h2>Единая справочная поддержка Швеции</h2>
+        <div class="card">
+            <p><strong>Ник:</strong> <span id="user-nick"></span></p>
+            <p><strong>Должность:</strong> <span id="user-role"></span></p>
         </div>
+        <button>Законы</button>
+        <button>Заявления</button>
+        <button onclick="showFinance()">Финансы</button>
+    </div>
+
+    <div id="finance-screen" class="hidden">
+        <h2>Финансовый сектор</h2>
+        <button onclick="showNBSh()">Национальный Банк Швеции (НБШ)</button>
+        <div id="bank-detail" class="hidden card">
+            <p>Ваш баланс:</p>
+            <p class="bank-info"><span id="user-balance"></span> SEK</p>
+        </div>
+        <button onclick="backToMenu()" style="background: #6c757d;">Назад</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.ready();
 
-        // Получаем параметры из ссылки (передает Go-бот)
+        // Читаем данные из URL, которые прислал Go-бот
         const params = new URLSearchParams(window.location.search);
-        const exists = params.get('exists') === 'true';
-        const isAdmin = params.get('admin') === 'true';
+        const exists = params.get('exists');
+        const nick = params.get('nick');
+        const role = params.get('role');
+        const balance = params.get('balance');
 
         // Логика переключения экранов
-        if (exists) {
-            document.getElementById('profile-screen').style.display = 'block';
-            document.getElementById('u-nick').innerText = params.get('nick');
-            document.getElementById('u-role').innerText = params.get('role');
-            document.getElementById('u-balance').innerText = parseFloat(params.get('balance')).toFixed(2) + " Gold";
-            
-            if (isAdmin) {
-                document.getElementById('admin-screen').style.display = 'block';
-            }
+        if (exists === 'true') {
+            document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('user-nick').innerText = nick;
+            document.getElementById('user-role').innerText = role;
         } else {
-            document.getElementById('reg-screen').style.display = 'block';
+            document.getElementById('reg-screen').classList.remove('hidden');
         }
 
-        // Функция регистрации
+        // Функции кнопок
         function register() {
-            const nick = document.getElementById('reg-nick').value.trim();
-            const role = document.getElementById('reg-role').value.trim();
-
-            if (nick.length < 2 || role.length < 2) {
-                tg.showAlert("Пожалуйста, заполните все поля корректно!");
-                return;
-            }
-
-            // Отправляем данные в Go-бот
-            tg.sendData(JSON.stringify({
-                action: 'register',
-                nick: nick,
-                role: role
-            }));
-            
-            // После отправки данных Telegram закроет WebApp. 
-            // Пользователь нажмет /start еще раз и увидит профиль.
+            const nickInput = document.getElementById('nick').value;
+            const roleInput = document.getElementById('role').value;
+            const data = { action: 'register', nick: nickInput, role: roleInput };
+            tg.sendData(JSON.stringify(data));
+            tg.close();
         }
 
-        function adminList() {
-            tg.sendData(JSON.stringify({ action: 'get_users_list' }));
+        function showFinance() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('finance-screen').classList.remove('hidden');
+        }
+
+        function showNBSh() {
+            document.getElementById('bank-detail').classList.remove('hidden');
+            document.getElementById('user-balance').innerText = balance;
+        }
+
+        function backToMenu() {
+            document.getElementById('finance-screen').classList.add('hidden');
+            document.getElementById('bank-detail').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
         }
     </script>
 </body>
+</html>
 </html>
