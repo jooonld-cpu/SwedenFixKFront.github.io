@@ -5,21 +5,24 @@
     <title>Швеция: Кабинет</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; color: #333; }
         .hidden { display: none; }
-        .card { background: white; padding: 20px; border-radius: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; }
-        button { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px; background: #00529b; color: white; font-weight: bold; }
-        .bank-info { color: #28a745; font-size: 1.2em; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; }
+        button { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px; background: #00529b; color: white; font-weight: bold; cursor: pointer; }
+        button:active { background: #003d73; }
+        .bank-info { color: #28a745; font-size: 1.2em; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="reg-screen" class="hidden">
         <h2>Регистрация гражданина</h2>
-        <input type="text" id="nick" placeholder="Ваш Ник">
-        <select id="role">
+        <p>Пожалуйста, представьтесь системе</p>
+        <input type="text" id="nick" placeholder="Ваш Ник" style="width: 80%; padding: 10px; margin-bottom: 10px;">
+        <select id="role" style="width: 85%; padding: 10px; margin-bottom: 10px;">
             <option value="Гражданин">Гражданин</option>
             <option value="Сотрудник">Сотрудник</option>
+            <option value="Министр">Министр</option>
         </select>
         <button onclick="register()">Зарегистрироваться</button>
     </div>
@@ -30,33 +33,36 @@
             <p><strong>Ник:</strong> <span id="user-nick"></span></p>
             <p><strong>Должность:</strong> <span id="user-role"></span></p>
         </div>
-        <button>Законы</button>
-        <button>Заявления</button>
-        <button onclick="showFinance()">Финансы</button>
+        
+        <button onclick="openLaws()">📜 Законы</button>
+        <button onclick="alert('Раздел в разработке')">📝 Заявления</button>
+        <button onclick="showFinance()">💰 Финансы</button>
     </div>
 
     <div id="finance-screen" class="hidden">
         <h2>Финансовый сектор</h2>
         <button onclick="showNBSh()">Национальный Банк Швеции (НБШ)</button>
+        
         <div id="bank-detail" class="hidden card">
-            <p>Ваш баланс:</p>
+            <p>Ваш текущий баланс:</p>
             <p class="bank-info"><span id="user-balance"></span> SEK</p>
         </div>
-        <button onclick="backToMenu()" style="background: #6c757d;">Назад</button>
+        
+        <button onclick="backToMenu()" style="background: #6c757d; margin-top: 20px;">⬅️ Назад в меню</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Читаем данные из URL, которые прислал Go-бот
+        // Получаем данные из URL, переданные Go-ботом
         const params = new URLSearchParams(window.location.search);
         const exists = params.get('exists');
         const nick = params.get('nick');
         const role = params.get('role');
         const balance = params.get('balance');
 
-        // Логика переключения экранов
+        // Решаем, какой экран показать
         if (exists === 'true') {
             document.getElementById('main-menu').classList.remove('hidden');
             document.getElementById('user-nick').innerText = nick;
@@ -65,13 +71,21 @@
             document.getElementById('reg-screen').classList.remove('hidden');
         }
 
-        // Функции кнопок
+        // --- ФУНКЦИИ ---
+
         function register() {
             const nickInput = document.getElementById('nick').value;
             const roleInput = document.getElementById('role').value;
+            if(!nickInput) return alert("Введите ник!");
+            
             const data = { action: 'register', nick: nickInput, role: roleInput };
             tg.sendData(JSON.stringify(data));
             tg.close();
+        }
+
+        function openLaws() {
+            // Ссылка на ваш Google Документ
+            window.open("https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit?tab=t.0", "_blank");
         }
 
         function showFinance() {
@@ -91,5 +105,4 @@
         }
     </script>
 </body>
-</html>
 </html>
