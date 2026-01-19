@@ -3,43 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweden Finance System</title>
+    <title>Sweden Finance</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: white; margin: 0; padding: 15px; }
-        
-        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; 
-                border-left: 4px solid var(--gold); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        
-        h2, h3 { color: var(--gold); margin-top: 0; }
-        
-        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; 
-                 background: var(--gold); color: black; font-weight: bold; font-size: 16px; cursor: pointer; }
-        button:active { transform: scale(0.98); }
+        body { font-family: sans-serif; background: var(--bg); color: white; padding: 15px; margin: 0; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--gold); }
+        h2, h3 { color: var(--gold); }
+        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; background: var(--gold); color: black; font-weight: bold; cursor: pointer; }
         .btn-secondary { background: #444; color: white; }
-        
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; 
-                        background: #333; color: white; box-sizing: border-box; font-size: 16px; }
-        
-        .balance-label { font-size: 0.8em; color: #aaa; text-transform: uppercase; }
-        .balance-val { font-size: 1.8em; font-weight: bold; color: var(--gold); }
-        
-        .bond-item { background: rgba(255, 215, 0, 0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #444; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; }
         .hidden { display: none; }
-        .user-info { font-size: 0.9em; opacity: 0.8; margin-bottom: 20px; }
+        .bond-item { background: rgba(255, 215, 0, 0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #444; }
     </style>
 </head>
 <body>
 
     <div id="main-menu">
         <h2 id="nick-display">Загрузка...</h2>
-        <div class="user-info" id="role-display">Гражданин Швеции</div>
-
         <div class="card">
-            <div class="balance-label">Банковский счет</div>
             <select id="bank-select" onchange="updateUI()"></select>
-            <div class="balance-val"><span id="bal-val">0</span> <span style="font-size: 0.5em;">GOLD</span></div>
+            <div style="font-size: 1.8em; color: var(--gold); font-weight: bold;"><span id="bal-val">0</span> GOLD</div>
         </div>
 
         <div id="bonds-section" class="hidden">
@@ -48,51 +32,42 @@
         </div>
 
         <button onclick="showPage('transfer-page')">💸 Перевести GOLD</button>
-        <button onclick="showPage('requests-page')">📝 Подать заявку на облигацию</button>
+        <button onclick="showPage('requests-page')">📝 Подать заявку</button>
         <button class="btn-secondary" onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit')">📜 Справочник и Законы</button>
     </div>
 
     <div id="requests-page" class="hidden">
-        <h3>Новая облигация</h3>
+        <h3>Новая заявка</h3>
         <div class="card">
-            <label>Тип ценной бумаги:</label>
+            <label>Тип:</label>
             <select id="bond-type">
-                <option value="Королевская Бессрочная Облигация">Королевская (1.5% / от 100 GOLD)</option>
-                <option value="Облигация Муниципалитета Стокгольм">Стокгольм (0.7% / от 30 GOLD)</option>
+                <option value="Королевская Бессрочная Облигация">Королевская (1.5% / от 100)</option>
+                <option value="Облигация Муниципалитета Стокгольм">Стокгольм (0.7% / от 30)</option>
             </select>
-            <label>Сумма инвестиции:</label>
-            <input type="number" id="bond-amount" placeholder="Введите сумму">
-            <p style="font-size: 0.8em; color: #aaa;">* Деньги будут списаны с выбранного счета после одобрения.</p>
-            <button onclick="sendBondRequest()">Отправить заявку</button>
+            <input type="number" id="bond-amount" placeholder="Сумма GOLD">
+            <button onclick="sendBondRequest()">Отправить на одобрение</button>
         </div>
-        <button class="btn-secondary" onclick="showPage('main-menu')">Назад в меню</button>
+        <button class="btn-secondary" onclick="showPage('main-menu')">Назад</button>
     </div>
 
     <div id="transfer-page" class="hidden">
-        <h3>Перевод средств</h3>
+        <h3>Перевод</h3>
         <div class="card">
-            <label>Получатель:</label>
             <select id="user-select"></select>
-            <label>Сумма перевода:</label>
-            <input type="number" id="t-amount" placeholder="0.00">
-            <button onclick="doTransfer()">Подтвердить перевод</button>
+            <input type="number" id="t-amount" placeholder="Сумма">
+            <button onclick="doTransfer()">Отправить</button>
         </div>
-        <button class="btn-secondary" onclick="showPage('main-menu')">Назад в меню</button>
+        <button class="btn-secondary" onclick="showPage('main-menu')">Назад</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand();
-
         const params = new URLSearchParams(window.location.search);
         let accounts = [];
 
         function init() {
-            // Отображение ника
-            const nick = decodeURIComponent(params.get('nick') || "Житель");
-            document.getElementById('nick-display').innerText = nick;
-
-            // Загрузка балансов
+            document.getElementById('nick-display').innerText = decodeURIComponent(params.get('nick') || "Житель");
+            
             try {
                 accounts = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
                 const bSel = document.getElementById('bank-select');
@@ -101,37 +76,28 @@
                     opt.dataset.bal = a.balance;
                     bSel.add(opt);
                 });
-            } catch(e) { console.error("Ошибка счетов:", e); }
+            } catch(e) {}
 
-            // Загрузка облигаций
             try {
                 const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
                 if (bonds.length > 0) {
                     document.getElementById('bonds-section').classList.remove('hidden');
                     const bList = document.getElementById('bonds-list');
                     bonds.forEach(b => {
-                        bList.innerHTML += `
-                            <div class="bond-item">
-                                <b>${b.name}</b><br>
-                                <span style="color:var(--gold)">${b.amount} GOLD</span> 
-                                <small>(${b.rate}% в день)</small><br>
-                                <small style="color:#888">Оформлено: ${b.date}</small>
-                            </div>`;
+                        bList.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>${b.amount} GOLD (${b.rate}%/день)<br><small>${b.date}</small></div>`;
                     });
                 }
-            } catch(e) { console.error("Ошибка облигаций:", e); }
+            } catch(e) {}
 
-            // Загрузка списка игроков для перевода
             const uSel = document.getElementById('user-select');
             const users = decodeURIComponent(params.get('users') || "").split(',');
-            uSel.add(new Option("-- Выберите игрока --", ""));
+            uSel.add(new Option("-- Получатель --", ""));
             users.forEach(u => {
                 if(u.includes(':')) {
                     const [id, name] = u.split(':');
                     uSel.add(new Option(name, id));
                 }
             });
-
             updateUI();
         }
 
@@ -142,49 +108,32 @@
         }
 
         function showPage(id) {
-            document.getElementById('main-menu').classList.add('hidden');
-            document.getElementById('requests-page').classList.add('hidden');
-            document.getElementById('transfer-page').classList.add('hidden');
+            ['main-menu', 'requests-page', 'transfer-page'].forEach(p => document.getElementById(p).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
 
         function sendBondRequest() {
-            const type = document.getElementById('bond-type').value;
             const amount = parseFloat(document.getElementById('bond-amount').value);
             const bankId = document.getElementById('bank-select').value;
-            const nick = decodeURIComponent(params.get('nick') || "");
-
-            if (!amount || amount <= 0) return alert("Введите сумму!");
-            if (type.includes("Королевская") && amount < 100) return alert("Минимальный вклад 100 GOLD");
-            if (type.includes("Стокгольм") && amount < 30) return alert("Минимальный вклад 30 GOLD");
-
             tg.sendData(JSON.stringify({
                 action: 'bond_request',
-                bond_name: type,
+                bond_name: document.getElementById('bond-type').value,
                 amount: amount,
                 bank_id: parseInt(bankId),
-                nick: nick
+                nick: decodeURIComponent(params.get('nick') || "")
             }));
             tg.close();
         }
 
         function doTransfer() {
-            const target = document.getElementById('user-select').value;
-            const amount = parseFloat(document.getElementById('t-amount').value);
-            const bankId = document.getElementById('bank-select').value;
-
-            if (!target) return alert("Выберите получателя!");
-            if (!amount || amount <= 0) return alert("Введите сумму!");
-
             tg.sendData(JSON.stringify({
                 action: 'transfer',
-                target_id: target,
-                amount: amount,
-                bank_id: parseInt(bankId)
+                target_id: document.getElementById('user-select').value,
+                amount: parseFloat(document.getElementById('t-amount').value),
+                bank_id: parseInt(document.getElementById('bank-select').value)
             }));
             tg.close();
         }
-
         init();
     </script>
 </body>
