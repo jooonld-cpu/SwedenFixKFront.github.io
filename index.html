@@ -2,90 +2,92 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Швеция: Кабинет</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; color: #333; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 15px; }
+        .card { background: #2d2d2d; padding: 20px; border-radius: 15px; margin: 10px 0; border: 1px solid #ffd700; }
+        button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 8px; background: #ffd700; color: black; font-weight: bold; cursor: pointer; }
         .hidden { display: none; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; }
-        button { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px; background: #00529b; color: white; font-weight: bold; cursor: pointer; }
-        button:active { background: #003d73; }
-        .bank-info { color: #28a745; font-size: 1.2em; font-weight: bold; }
+        input { width: 90%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; background: #333; color: white; }
+        .gold { color: #ffd700; font-size: 1.5em; font-weight: bold; }
+        h2 { color: #ffd700; }
     </style>
 </head>
 <body>
 
     <div id="reg-screen" class="hidden">
-        <h2>Регистрация гражданина</h2>
-        <p>Пожалуйста, представьтесь системе</p>
-        <input type="text" id="nick" placeholder="Ваш Ник" style="width: 80%; padding: 10px; margin-bottom: 10px;">
-        <select id="role" style="width: 85%; padding: 10px; margin-bottom: 10px;">
-            <option value="Гражданин">Гражданин</option>
-            <option value="Сотрудник">Сотрудник</option>
-            <option value="Министр">Министр</option>
-        </select>
-        <button onclick="register()">Зарегистрироваться</button>
+        <h2>Регистрация в Швеции</h2>
+        <p>Вас нет в базе данных. Пожалуйста, зарегистрируйтесь:</p>
+        <div class="card">
+            <input type="text" id="nick" placeholder="Придумайте Ник">
+            <input type="text" id="role" placeholder="Ваша должность/роль">
+            <button onclick="register()" style="background: #28a745; color: white;">Занести в реестр</button>
+        </div>
     </div>
 
     <div id="main-menu" class="hidden">
-        <h2>Единая справочная поддержка Швеции</h2>
+        <h2>Единая справочная Швеции</h2>
         <div class="card">
             <p><strong>Ник:</strong> <span id="user-nick"></span></p>
             <p><strong>Должность:</strong> <span id="user-role"></span></p>
         </div>
-        
-        <button onclick="openLaws()">📜 Законы</button>
-        <button onclick="alert('Раздел в разработке')">📝 Заявления</button>
-        <button onclick="showFinance()">💰 Финансы</button>
+        <button onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit', '_blank')">📜 Законы</button>
+        <button onclick="showFinance()">💰 Финансы (НБШ)</button>
     </div>
 
     <div id="finance-screen" class="hidden">
-        <h2>Финансовый сектор</h2>
-        <button onclick="showNBSh()">Национальный Банк Швеции (НБШ)</button>
-        
-        <div id="bank-detail" class="hidden card">
-            <p>Ваш текущий баланс:</p>
-            <p class="bank-info"><span id="user-balance"></span> SEK</p>
+        <h2>Национальный Банк Швеции</h2>
+        <div class="card">
+            <p>Баланс:</p>
+            <p class="gold"><span id="val-balance"></span> GOLD</p>
         </div>
         
-        <button onclick="backToMenu()" style="background: #6c757d; margin-top: 20px;">⬅️ Назад в меню</button>
+        <div id="transfer-box">
+            <p>Перевод игроку:</p>
+            <select id="user-select" style="width: 95%; padding: 10px; margin-bottom: 10px; border-radius: 8px;"></select>
+            <input type="number" id="amount-input" placeholder="Сумма перевода">
+            <button onclick="sendTransfer()" style="background: #ffd700; color: black;">Отправить GOLD</button>
+        </div>
+        
+        <button onclick="location.reload()" style="background: #555; color: white; margin-top: 20px;">Назад в меню</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Получаем данные из URL, переданные Go-ботом
         const params = new URLSearchParams(window.location.search);
         const exists = params.get('exists');
-        const nick = params.get('nick');
-        const role = params.get('role');
-        const balance = params.get('balance');
 
-        // Решаем, какой экран показать
         if (exists === 'true') {
             document.getElementById('main-menu').classList.remove('hidden');
-            document.getElementById('user-nick').innerText = nick;
-            document.getElementById('user-role').innerText = role;
+            document.getElementById('user-nick').innerText = params.get('nick');
+            document.getElementById('user-role').innerText = params.get('role');
+            document.getElementById('val-balance').innerText = params.get('balance');
+            
+            // Заполнение списка пользователей
+            const select = document.getElementById('user-select');
+            const users = params.get('users') || "";
+            users.split(',').forEach(u => {
+                if(u) {
+                    const [id, name] = u.split(':');
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.text = name;
+                    select.appendChild(opt);
+                }
+            });
         } else {
             document.getElementById('reg-screen').classList.remove('hidden');
         }
 
-        // --- ФУНКЦИИ ---
-
         function register() {
-            const nickInput = document.getElementById('nick').value;
-            const roleInput = document.getElementById('role').value;
-            if(!nickInput) return alert("Введите ник!");
+            const n = document.getElementById('nick').value;
+            const r = document.getElementById('role').value;
+            if(!n || !r) return alert("Заполните все поля!");
             
-            const data = { action: 'register', nick: nickInput, role: roleInput };
-            tg.sendData(JSON.stringify(data));
+            tg.sendData(JSON.stringify({ action: 'register', nick: n, role: r }));
             tg.close();
-        }
-
-        function openLaws() {
-            // Ссылка на ваш Google Документ
-            window.open("https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit?tab=t.0", "_blank");
         }
 
         function showFinance() {
@@ -93,15 +95,14 @@
             document.getElementById('finance-screen').classList.remove('hidden');
         }
 
-        function showNBSh() {
-            document.getElementById('bank-detail').classList.remove('hidden');
-            document.getElementById('user-balance').innerText = balance;
-        }
+        function sendTransfer() {
+            const target = document.getElementById('user-select').value;
+            const amount = parseFloat(document.getElementById('amount-input').value);
+            if(!target) return alert("Выберите получателя!");
+            if(amount <= 0) return alert("Неверная сумма!");
 
-        function backToMenu() {
-            document.getElementById('finance-screen').classList.add('hidden');
-            document.getElementById('bank-detail').classList.add('hidden');
-            document.getElementById('main-menu').classList.remove('hidden');
+            tg.sendData(JSON.stringify({ action: 'transfer', target_id: target, amount: amount }));
+            tg.close();
         }
     </script>
 </body>
