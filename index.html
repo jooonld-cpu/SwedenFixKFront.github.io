@@ -9,59 +9,52 @@
         button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 8px; background: #ffd700; color: black; font-weight: bold; cursor: pointer; }
         .hidden { display: none; }
         input, select { width: 95%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; background: #333; color: white; }
-        .gold { color: #ffd700; font-size: 1.5em; font-weight: bold; }
-        label { display: block; text-align: left; margin-left: 5px; color: #aaa; font-size: 0.9em; }
+        .gold { color: #ffd700; font-size: 1.8em; font-weight: bold; margin: 10px 0; }
+        label { display: block; text-align: left; margin: 10px 0 0 5px; color: #aaa; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
     <div id="reg-screen" class="hidden">
-        <h2>Регистрация</h2>
+        <h2>Регистрация в Швеции</h2>
         <input type="text" id="nick" placeholder="Ваш Ник">
-        <input type="text" id="role" placeholder="Ваша Должность">
+        <input type="text" id="role" placeholder="Должность">
         <button onclick="register()">Вступить в гражданство</button>
     </div>
 
     <div id="main-menu" class="hidden">
         <h2>Кабинет Гражданина</h2>
-        <div class="card">
-            <p><span id="user-info"></span></p>
-        </div>
-        <button onclick="showFinance()">🏦 Мои Счета (Банки)</button>
-        <button onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit', '_blank')">📜 Законы</button>
+        <div class="card"><p id="user-info"></p></div>
+        <button onclick="showFinance()">🏦 Финансы (Счета)</button>
+        <button onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit')">📜 Законы</button>
     </div>
 
     <div id="finance-screen" class="hidden">
-        <h2>Управление счетами</h2>
-        
+        <h2>Ваши Банки</h2>
         <div class="card">
             <label>Выберите банк:</label>
-            <select id="bank-select" onchange="updateBalanceDisplay()"></select>
-            
-            <p>Баланс в выбранном банке:</p>
+            <select id="bank-select" onchange="updateUI()"></select>
+            <p>Баланс:</p>
             <p class="gold"><span id="display-balance">0</span> GOLD</p>
         </div>
-
-        <button onclick="showTransfer()">💸 Перевод</button>
-        <button onclick="showWithdraw()">📥 Снятие</button>
-        <button onclick="hideAll(); document.getElementById('main-menu').classList.remove('hidden')" style="background: #555; color: white;">Назад</button>
+        <button onclick="showPage('transfer-page')">💸 Перевод</button>
+        <button onclick="showPage('withdraw-page')">📥 Снятие</button>
+        <button onclick="showPage('main-menu')" style="background:#555; color:white;">Назад</button>
     </div>
 
     <div id="transfer-page" class="hidden">
         <h2>Перевод средств</h2>
-        <p id="transfer-bank-label" style="color:#ffd700"></p>
         <select id="user-select"></select>
         <input type="number" id="t-amount" placeholder="Сумма">
-        <button onclick="sendAction('transfer')">Отправить</button>
-        <button onclick="showFinance()" style="background: #555; color: white;">Отмена</button>
+        <button onclick="send('transfer')">Отправить</button>
+        <button onclick="showFinance()" style="background:#555; color:white;">Назад</button>
     </div>
 
     <div id="withdraw-page" class="hidden">
-        <h2>Снятие наличных</h2>
-        <p id="withdraw-bank-label" style="color:#ffd700"></p>
+        <h2>Запрос на снятие</h2>
         <input type="number" id="w-amount" placeholder="Сумма">
-        <button onclick="sendAction('withdraw')" style="background: #e67e22; color: white;">Запросить</button>
-        <button onclick="showFinance()" style="background: #555; color: white;">Отмена</button>
+        <button onclick="send('withdraw')">Запросить</button>
+        <button onclick="showFinance()" style="background:#555; color:white;">Назад</button>
     </div>
 
     <script>
@@ -69,92 +62,58 @@
         tg.expand();
         const params = new URLSearchParams(window.location.search);
 
-        // Парсим данные
-        const exists = params.get('exists');
-        let accounts = []; 
-
+        let accounts = [];
         try {
-            // Читаем JSON со счетами из URL
-            accounts = JSON.parse(params.get('accounts') || "[]");
-        } catch (e) {
-            console.error("Ошибка чтения счетов", e);
-        }
+            accounts = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
+        } catch(e) { console.error(e); }
 
-        if (exists === 'true') {
-            document.getElementById('main-menu').classList.remove('hidden');
-            document.getElementById('user-info').innerText = params.get('nick') + " (" + params.get('role') + ")";
+        if (params.get('exists') === 'true') {
+            showPage('main-menu');
+            document.getElementById('user-info').innerText = decodeURIComponent(params.get('nick')) + " [" + decodeURIComponent(params.get('role')) + "]";
             
-            // Заполняем селект банков
-            const bankSelect = document.getElementById('bank-select');
-            accounts.forEach(acc => {
-                let opt = document.createElement('option');
-                opt.value = acc.bank_id;
-                opt.text = acc.bank_name;
-                opt.dataset.balance = acc.balance; // Храним баланс в атрибуте
-                bankSelect.appendChild(opt);
+            const bSel = document.getElementById('bank-select');
+            accounts.forEach(a => {
+                let o = document.createElement('option');
+                o.value = a.bank_id; o.text = a.bank_name; o.dataset.bal = a.balance;
+                bSel.appendChild(o);
             });
 
-            // Заполняем юзеров
-            const userSelect = document.getElementById('user-select');
-            (params.get('users') || "").split(',').forEach(u => {
-                if(u && u.includes(':')) {
-                    let [id, name] = u.split(':');
-                    let opt = document.createElement('option');
-                    opt.value = id; opt.text = name;
-                    userSelect.appendChild(opt);
+            const uSel = document.getElementById('user-select');
+            decodeURIComponent(params.get('users') || "").split(',').forEach(u => {
+                if(u.includes(':')) {
+                    let [id, n] = u.split(':');
+                    let o = document.createElement('option'); o.value = id; o.text = n;
+                    uSel.appendChild(o);
                 }
             });
-
         } else {
-            document.getElementById('reg-screen').classList.remove('hidden');
+            showPage('reg-screen');
         }
 
-        function updateBalanceDisplay() {
-            const select = document.getElementById('bank-select');
-            const balance = select.options[select.selectedIndex].dataset.balance;
-            const bankName = select.options[select.selectedIndex].text;
-            
-            document.getElementById('display-balance').innerText = balance;
-            document.getElementById('transfer-bank-label').innerText = "Банк: " + bankName;
-            document.getElementById('withdraw-bank-label').innerText = "Банк: " + bankName;
+        function updateUI() {
+            const s = document.getElementById('bank-select');
+            document.getElementById('display-balance').innerText = s.options[s.selectedIndex].dataset.bal;
         }
 
-        function showFinance() {
-            if (accounts.length === 0) return alert("У вас нет открытых счетов!");
-            hideAll();
-            document.getElementById('finance-screen').classList.remove('hidden');
-            updateBalanceDisplay();
-        }
+        function showFinance() { showPage('finance-screen'); updateUI(); }
 
-        function showTransfer() { hideAll(); document.getElementById('transfer-page').classList.remove('hidden'); }
-        function showWithdraw() { hideAll(); document.getElementById('withdraw-page').classList.remove('hidden'); }
-
-        function hideAll() {
-            ['reg-screen', 'main-menu', 'finance-screen', 'transfer-page', 'withdraw-page'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
+        function showPage(id) {
+            ['reg-screen', 'main-menu', 'finance-screen', 'transfer-page', 'withdraw-page'].forEach(p => document.getElementById(p).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
         }
 
         function register() {
             const n = document.getElementById('nick').value;
             const r = document.getElementById('role').value;
-            if(!n || !r) return alert("Заполните поля");
             tg.sendData(JSON.stringify({ action: 'register', nick: n, role: r }));
         }
 
-        function sendAction(act) {
-            const bankId = parseInt(document.getElementById('bank-select').value);
-            const amount = parseFloat(act === 'transfer' ? document.getElementById('t-amount').value : document.getElementById('w-amount').value);
+        function send(act) {
+            const bid = document.getElementById('bank-select').value;
+            const amt = parseFloat(document.getElementById(act === 'transfer' ? 't-amount' : 'w-amount').value);
             const target = document.getElementById('user-select').value;
-
-            if(!amount || amount <= 0) return alert("Неверная сумма");
-
-            tg.sendData(JSON.stringify({
-                action: act,
-                bank_id: bankId,
-                amount: amount,
-                target_id: target || ""
-            }));
+            if(!amt || amt <= 0) return alert("Сумма?");
+            tg.sendData(JSON.stringify({ action: act, bank_id: parseInt(bid), amount: amt, target_id: target }));
             tg.close();
         }
     </script>
