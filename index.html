@@ -16,6 +16,7 @@
         .bond-item { border-bottom: 1px solid #444; padding: 10px 0; }
         .bond-item:last-child { border: none; }
         .nav-btn { background: #333; color: white; margin-top: 10px; }
+        .market-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
     </style>
 </head>
 <body>
@@ -46,6 +47,7 @@
         <button onclick="showPage('transfer')">💸 Перевод игроку</button>
         <button onclick="showPage('withdraw')">🏦 Снятие средств</button>
         <button onclick="showPage('bonds')" style="background: #daa520">📈 Мои Инвестиции</button>
+        <button onclick="showPage('market')" style="background: #0055aa; color: white;">🛒 Магазин облигаций</button>
         
         <button onclick="tg.close()" class="nav-btn">Закрыть</button>
     </div>
@@ -72,6 +74,12 @@
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
+    <div id="market-screen" class="hidden">
+        <h3>Доступные облигации</h3>
+        <div id="market-list"></div>
+        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -87,6 +95,12 @@
             const role = document.getElementById('reg-role').value;
             if(!nick || !role) return alert("Заполните поля!");
             tg.sendData(JSON.stringify({action: 'register', nick: nick, role: role}));
+        }
+
+        function buyBond(id) {
+            if(confirm("Вы уверены, что хотите купить эту облигацию?")) {
+                tg.sendData(JSON.stringify({action: 'buy_bond', bond_id: parseInt(id)}));
+            }
         }
 
         function action(type) {
@@ -113,15 +127,33 @@
                 document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
                 document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новостей пока нет.");
                 
+                // Отрисовка личного портфеля
                 const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
                 const list = document.getElementById('bonds-list');
+                list.innerHTML = ""; // Очистка
                 if(bonds.length === 0) list.innerHTML = "<small>У вас пока нет активных облигаций.</small>";
                 bonds.forEach(b => {
                     list.innerHTML += `<div class="bond-item">
                         <b>${b.name}</b><br>
                         Текущая стоимость: <span style="color:var(--gold)">${b.current_value.toFixed(2)}</span><br>
-                        <small>Рост: ${b.rate}% в день | От ${b.date}</small>
+                        <small>Рост: ${b.rate}% в день | Куплено: ${b.date}</small>
                     </div>`;
+                });
+
+                // Отрисовка магазина (рынка)
+                const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
+                const mList = document.getElementById('market-list');
+                mList.innerHTML = ""; // Очистка
+                if(market.length === 0) mList.innerHTML = "<div class='card'>В магазине пока пусто.</div>";
+                market.forEach(m => {
+                    mList.innerHTML += `
+                        <div class="market-item">
+                            <b style="color:var(--gold)">${m.name}</b><br>
+                            Цена: ${m.price.toFixed(2)} GOLD<br>
+                            Доходность: ${m.rate}% в день<br>
+                            <button onclick="buyBond('${m.id}')" style="padding: 8px; font-size: 14px; margin-top: 10px;">Купить</button>
+                        </div>
+                    `;
                 });
             }
         };
