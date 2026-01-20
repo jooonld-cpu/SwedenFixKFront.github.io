@@ -101,14 +101,24 @@
             tg.sendData(JSON.stringify({action: 'register', nick, role}));
         }
 
-        function buyBond(id) {
-            if(confirm("Отправить заявку админу на покупку этой бумаги?")) {
+        // ПЕРЕРАБОТАННАЯ ФУНКЦИЯ ПОКУПКИ
+        function buyBond(id, minAmount) {
+            const amount = parseFloat(prompt(`Введите сумму инвестиции (минимум ${minAmount} GOLD):`, minAmount));
+            
+            if (isNaN(amount) || amount < minAmount) {
+                alert(`Минимальная сумма вклада для этой облигации: ${minAmount} GOLD`);
+                return;
+            }
+
+            if(confirm(`Подтверждаете инвестицию в размере ${amount} GOLD?`)) {
                 tg.sendData(JSON.stringify({
                     action: 'buy_bond', 
                     bond_id: parseInt(id),
+                    amount: amount,
                     nick: decodeURIComponent(params.get('nick'))
                 }));
-                tg.close();
+                // Мы не закрываем приложение сразу, чтобы пользователь видел результат в чате, 
+                // но если логика вашего бота требует закрытия - раскомментируйте tg.close()
             }
         }
 
@@ -140,14 +150,12 @@
             document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
             document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
 
-            // --- ЗАПОЛНЕНИЕ ВЫПАДАЮЩЕГО СПИСКА ЛЮДЕЙ ---
             const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
             const currentId = params.get('tg_id');
             const select = document.getElementById('t-id');
             select.innerHTML = '<option value="" disabled selected>Выберите гражданина</option>';
             
             users.forEach(u => {
-                // Исключаем самого себя из списка
                 if (u.id !== currentId) {
                     const opt = document.createElement('option');
                     opt.value = u.id;
@@ -156,20 +164,33 @@
                 }
             });
 
-            // Портфель
+            // ПЕРЕРАБОТАННЫЙ ВЫВОД ПОРТФЕЛЯ
             const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
             const list = document.getElementById('bonds-list');
-            list.innerHTML = bonds.length ? "" : "<small>Нет активов.</small>";
+            list.innerHTML = bonds.length ? "" : "<small>Нет активных инвестиций.</small>";
             bonds.forEach(b => {
-                list.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>Ценность: ${b.current_value.toFixed(2)}<br><small>${b.rate}% | ${b.date}</small></div>`;
+                list.innerHTML += `
+                    <div class="bond-item">
+                        <b style="color: var(--gold)">${b.name}</b><br>
+                        Вложено: ${b.amount.toFixed(2)} GOLD<br>
+                        Текущая ценность: <span style="color: #00ff00">+${b.current_value.toFixed(2)}</span><br>
+                        <small>Ставка: ${b.rate}%/день | Дата: ${b.date}</small>
+                    </div>`;
             });
 
-            // Магазин
+            // ПЕРЕРАБОТАННЫЙ ВЫВОД МАГАЗИНА
             const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
             const mList = document.getElementById('market-list');
             mList.innerHTML = market.length ? "" : "<div class='card'>Рынок пуст.</div>";
             market.forEach(m => {
-                mList.innerHTML += `<div class="market-item"><b>${m.name}</b><br>Цена: ${m.price} GOLD<br>Доход: ${m.rate}%<br><button onclick="buyBond('${m.id}')">Купить</button></div>`;
+                mList.innerHTML += `
+                    <div class="market-item">
+                        <b style="color: var(--gold)">${m.name}</b><br>
+                        Мин. вклад: ${m.price} GOLD<br>
+                        Доход: ${m.rate}% в день<br>
+                        Заморозка: ${m.min_days} дн.<br>
+                        <button onclick="buyBond('${m.id}', ${m.price})">Инвестировать</button>
+                    </div>`;
             });
         };
     </script>
