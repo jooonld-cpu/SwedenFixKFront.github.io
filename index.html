@@ -10,7 +10,7 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
         .info-bar { background: #b8860b33; padding: 12px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; border: 1px solid var(--gold); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; font-size: 16px; color: #000; cursor: pointer; margin-top: 5px; }
         .hidden { display: none; }
         .bond-item { border-bottom: 1px solid #444; padding: 10px 0; }
@@ -54,7 +54,12 @@
 
     <div id="transfer-screen" class="hidden">
         <h3>Перевод GOLD</h3>
-        <input type="text" id="t-id" placeholder="Telegram ID получателя">
+        <p style="font-size: 14px; opacity: 0.8;">Выберите получателя из списка:</p>
+        
+        <select id="t-id">
+            <option value="" disabled selected>Загрузка списка...</option>
+        </select>
+
         <input type="number" id="t-sum" placeholder="Сумма перевода">
         <button onclick="action('transfer')">Подтвердить перевод</button>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
@@ -92,6 +97,7 @@
         function register() {
             const nick = document.getElementById('reg-nick').value;
             const role = document.getElementById('reg-role').value;
+            if(!nick || !role) return alert("Заполните все поля!");
             tg.sendData(JSON.stringify({action: 'register', nick, role}));
         }
 
@@ -109,11 +115,17 @@
         function action(type) {
             const data = { action: type, nick: decodeURIComponent(params.get('nick')) };
             if(type === 'transfer') {
-                data.target_id = document.getElementById('t-id').value;
+                const targetSelect = document.getElementById('t-id');
+                data.target_id = targetSelect.value;
                 data.amount = parseFloat(document.getElementById('t-sum').value);
+                
+                if (!data.target_id) return alert("Выберите получателя!");
             } else {
                 data.amount = parseFloat(document.getElementById('w-sum').value);
             }
+            
+            if (!data.amount || data.amount <= 0) return alert("Введите корректную сумму!");
+            
             tg.sendData(JSON.stringify(data));
         }
 
@@ -127,6 +139,22 @@
             document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
             document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
             document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
+
+            // --- ЗАПОЛНЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ (НОВОЕ) ---
+            const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
+            const currentId = params.get('tg_id');
+            const select = document.getElementById('t-id');
+            select.innerHTML = '<option value="" disabled selected>Выберите гражданина</option>';
+            
+            users.forEach(u => {
+                // Не показываем себя в списке получателей
+                if (u.id !== currentId) {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.text = `${u.nick}`; // Можно добавить роль: `${u.nick} (${u.role})` если роль передается
+                    select.appendChild(opt);
+                }
+            });
 
             // Портфель
             const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
