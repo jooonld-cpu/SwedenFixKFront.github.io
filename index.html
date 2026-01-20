@@ -1,158 +1,94 @@
-package main
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweden Finance</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eeeeee; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
+        .hidden { display: none; }
+        button { width: 100%; padding: 12px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; margin: 5px 0; }
+        #loader { text-align: center; padding-top: 50px; }
+    </style>
+</head>
+<body>
+    <div id="loader">⏳ Загрузка...</div>
 
-import (
-	"database/sql"
-	"encoding/json"
-	"fmt"
-	"log"
-	"math"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+    <div id="main-menu" class="hidden">
+        <h2 id="u-nick">Ник</h2>
+        <p id="u-role" style="opacity:0.7">Роль</p>
+        <div class="card">
+            <small>Баланс:</small>
+            <h1 id="bal-val">0.00 GOLD</h1>
+        </div>
+        <button onclick="showPage('page-transfer')">💸 Перевести</button>
+        <button onclick="tg.close()">Выход</button>
+    </div>
 
-	_ "github.com/lib/pq"
-	"gopkg.in/telebot.v3"
-)
+    <div id="page-transfer" class="hidden">
+        <h3>Перевод</h3>
+        <select id="u-select" style="width:100%; padding:10px; margin-bottom:10px;"></select>
+        <input type="number" id="t-amount" placeholder="Сумма" style="width:100%; padding:10px; margin-bottom:10px;">
+        <button onclick="doTransfer()">Отправить</button>
+        <button onclick="showPage('main-menu')" style="background:#444; color:#fff;">Назад</button>
+    </div>
 
-const AdminID = 7631664265
-const WebAppURL = "https://jooonld-cpu.github.io/SwedenFixKFront.github.io/"
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const params = new URLSearchParams(window.location.search);
 
-var userState = make(map[int64]string)
-var tempReg = make(map[int64]map[string]string)
+        // Функция очистки параметров от невидимых символов
+        function cleanParam(name) {
+            let val = params.get(name) || "";
+            return decodeURIComponent(val).replace(/[\u00A0\u1680​\u180e\u2000-\u200b\u202f\u205f\u3000]/g, " ");
+        }
 
-type Bond struct {
-	ID           int     `json:"id"`
-	Name         string  `json:"name"`
-	Amount       float64 `json:"amount"`
-	Rate         float64 `json:"rate"`
-	CurrentValue float64 `json:"current_value"`
-	Date         string  `json:"date"`
-}
+        function showPage(id) {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('page-transfer').classList.add('hidden');
+            document.getElementById(id).classList.remove('hidden');
+        }
 
-type WebAppData struct {
-	Action   string  `json:"action"`
-	TargetID string  `json:"target_id"`
-	Amount   float64 `json:"amount"`
-	BondName string  `json:"bond_name"`
-	Message  string  `json:"message"`
-}
+        function load() {
+            try {
+                document.getElementById('u-nick').innerText = cleanParam('nick') || "Житель";
+                document.getElementById('u-role').innerText = cleanParam('role') || "Гражданин";
 
-func main() {
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
-	if err != nil {
-		log.Fatal(err)
-	}
+                // Парсим счета
+                const accs = JSON.parse(cleanParam('accounts') || "[]");
+                if(accs.length > 0) {
+                    document.getElementById('bal-val').innerText = accs[0].balance.toFixed(2) + " GOLD";
+                }
 
-	b, err := telebot.NewBot(telebot.Settings{
-		Token:  os.Getenv("BOT_TOKEN"),
-		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+                // Парсим игроков
+                const users = cleanParam('users').split(',');
+                const uSel = document.getElementById('u-select');
+                users.forEach(u => {
+                    if(u.includes(':')) {
+                        const [id, name] = u.split(':');
+                        uSel.add(new Option(name, id));
+                    }
+                });
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS users (tg_id TEXT PRIMARY KEY, nickname TEXT, role TEXT, balance FLOAT DEFAULT 0)`)
-	db.Exec(`CREATE TABLE IF NOT EXISTS bonds (id SERIAL PRIMARY KEY, user_id TEXT, name TEXT, amount FLOAT, rate FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`)
-	db.Exec(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, user_id TEXT, text TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`)
+                document.getElementById('loader').classList.add('hidden');
+                showPage('main-menu');
+            } catch (e) {
+                document.getElementById('loader').innerText = "❌ Ошибка данных: " + e.message;
+            }
+        }
 
-	calcBond := func(amount, rate float64, t time.Time) float64 {
-		days := math.Floor(time.Since(t).Hours() / 24)
-		if days < 0 { days = 0 }
-		return amount * math.Pow(1+(rate/100), days)
-	}
+        function doTransfer() {
+            const amount = parseFloat(document.getElementById('t-amount').value);
+            const target = document.getElementById('u-select').value;
+            if(!amount || !target) return alert("Заполните поля");
+            tg.sendData(JSON.stringify({action: 'transfer', amount: amount, target_id: target}));
+        }
 
-	b.Handle("/start", func(c telebot.Context) error {
-		uid := strconv.FormatInt(c.Sender().ID, 10)
-		var exists bool
-		db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE tg_id=$1)", uid).Scan(&exists)
-		if !exists {
-			userState[c.Sender().ID] = "reg_nick"
-			return c.Send("🇸🇪 Введите ваш Ник:")
-		}
-		return sendMenu(c, db, calcBond)
-	})
-
-	b.Handle(telebot.OnText, func(c telebot.Context) error {
-		state, ok := userState[c.Sender().ID]
-		if !ok { return nil }
-		uid := strconv.FormatInt(c.Sender().ID, 10)
-		if state == "reg_nick" {
-			tempReg[c.Sender().ID] = map[string]string{"nick": c.Text()}
-			userState[c.Sender().ID] = "reg_role"
-			return c.Send("Введите должность:")
-		} else if state == "reg_role" {
-			db.Exec("INSERT INTO users (tg_id, nickname, role, balance) VALUES ($1, $2, $3, 0)", uid, tempReg[c.Sender().ID]["nick"], c.Text())
-			delete(userState, c.Sender().ID)
-			return sendMenu(c, db, calcBond)
-		}
-		return nil
-	})
-
-	b.Handle(telebot.OnWebApp, func(c telebot.Context) error {
-		var data WebAppData
-		if err := json.Unmarshal([]byte(c.Message().WebAppData.Data), &data); err != nil {
-			return nil
-		}
-		uid := strconv.FormatInt(c.Sender().ID, 10)
-		if data.Action == "transfer" {
-			tx, _ := db.Begin()
-			var bal float64
-			tx.QueryRow("SELECT balance FROM users WHERE tg_id=$1", uid).Scan(&bal)
-			if bal < data.Amount {
-				tx.Rollback()
-				return c.Send("❌ Недостаточно средств")
-			}
-			tx.Exec("UPDATE users SET balance = balance - $1 WHERE tg_id = $2", data.Amount, uid)
-			tx.Exec("UPDATE users SET balance = balance + $1 WHERE tg_id = $2", data.Amount, data.TargetID)
-			tx.Commit()
-			return c.Send("✅ Перевод выполнен")
-		}
-		return nil
-	})
-
-	b.Start()
-}
-
-func sendMenu(c telebot.Context, db *sql.DB, calc func(float64, float64, time.Time) float64) error {
-	uid := strconv.FormatInt(c.Sender().ID, 10)
-	var nick, role string
-	var balance float64
-	db.QueryRow("SELECT nickname, role, balance FROM users WHERE tg_id=$1", uid).Scan(&nick, &role, &balance)
-
-	rows, _ := db.Query("SELECT tg_id, nickname FROM users")
-	var uList []string
-	for rows.Next() {
-		var id, n string
-		rows.Scan(&id, &n)
-		uList = append(uList, id+":"+n)
-	}
-	rows.Close()
-
-	accs, _ := json.Marshal([]map[string]interface{}{{"bank_id": 1, "bank_name": "Основной", "balance": balance}})
-	
-	bondRows, _ := db.Query(`SELECT id, name, amount, rate, created_at FROM bonds WHERE user_id = $1`, uid)
-	var bonds []Bond
-	for bondRows.Next() {
-		var bo Bond
-		var t time.Time
-		bondRows.Scan(&bo.ID, &bo.Name, &bo.Amount, &bo.Rate, &t)
-		bo.CurrentValue = calc(bo.Amount, bo.Rate, t)
-		bo.Date = t.Format("02.01.2006")
-		bonds = append(bonds, bo)
-	}
-	bondRows.Close()
-	bJ, _ := json.Marshal(bonds)
-
-	v := url.Values{}
-	v.Set("nick", nick)
-	v.Set("role", role)
-	v.Set("accounts", string(accs))
-	v.Set("bonds", string(bJ))
-	v.Set("users", strings.Join(uList, ","))
-	
-	menu := &telebot.ReplyMarkup{ResizeKeyboard: true}
-	menu.Reply(menu.Row(menu.WebApp("🇸🇪 Кабинет", &telebot.WebApp{URL: WebAppURL + "?" + v.Encode()})))
-	return c.Send("🇸🇪 Меню загружено", menu)
-}
+        load();
+    </script>
+</body>
+</html>
