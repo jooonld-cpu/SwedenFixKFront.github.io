@@ -15,8 +15,7 @@
         .btn-sec { background: #444; color: white; margin-top: 10px; }
         input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; }
         .hidden { display: none; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .bond-item { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-bottom: 2px solid var(--gold); }
+        #loader { text-align: center; margin-top: 50px; color: var(--gold); }
     </style>
 </head>
 <body>
@@ -25,50 +24,50 @@
 
 <div id="register-page" class="hidden">
     <h2>Регистрация</h2>
-    <input type="text" id="reg-nick" placeholder="Игровой ник">
+    <input type="text" id="reg-nick" placeholder="Ваш ник">
     <select id="reg-role">
         <option value="Гражданин">Гражданин</option>
         <option value="Министр">Министр</option>
-        <option value="Король">Король</option>
+        <option value="Бизнесмен">Бизнесмен</option>
     </select>
-    <button onclick="register()">Создать аккаунт</button>
+    <button onclick="sendAction('register', {nick: document.getElementById('reg-nick').value, role: document.getElementById('reg-role').value})">Зарегистрироваться</button>
 </div>
 
 <div id="main-menu" class="hidden">
-    <div class="header">
+    <div style="text-align: center; margin-bottom: 20px;">
         <h2 id="u-nick">Ник</h2>
         <div id="u-role" style="opacity: 0.6;">Роль</div>
     </div>
     <div class="grid-menu">
-        <div class="menu-btn" onclick="showPage('page-finance')">💰<br>Финансы</div>
-        <div class="menu-btn" onclick="showPage('page-apps')">📝<br>Заявления</div>
+        <div class="menu-btn" onclick="showPage('page-finance')">💰<br>Счета</div>
         <div class="menu-btn" onclick="showPage('page-bonds')">📈<br>Бумаги</div>
+        <div class="menu-btn" onclick="showPage('page-apps')">📝<br>Помощь</div>
         <div class="menu-btn" onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit')">📜<br>Законы</div>
     </div>
 </div>
 
 <div id="page-finance" class="hidden">
-    <h3>Счета</h3>
+    <h3>Кошелек</h3>
     <div class="card">
         <select id="bank-select" onchange="updateBal()"></select>
         <h2 id="bal-val">0.00 GOLD</h2>
     </div>
-    <button onclick="showPage('page-transfer')">Перевести</button>
-    <button onclick="showPage('page-withdraw')">Снять</button>
+    <button onclick="showPage('page-transfer')">💸 Перевести</button>
+    <button onclick="showPage('page-withdraw')">🏧 Снять</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
 
 <div id="page-withdraw" class="hidden">
-    <h3>Снятие</h3>
+    <h3>Снятие золота</h3>
     <input type="number" id="w-amount" placeholder="Сумма">
     <button onclick="sendWithdraw()">Отправить запрос</button>
     <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
 </div>
 
 <div id="page-bonds" class="hidden">
-    <h3>Облигации</h3>
-    <button onclick="showPage('sub-my-bonds')">Мой портфель</button>
-    <button onclick="showPage('sub-buy-bond')">Купить</button>
+    <h3>Инвестиции</h3>
+    <button onclick="showPage('sub-my-bonds')">📂 Мои бумаги</button>
+    <button onclick="showPage('sub-buy-bond')">🛒 Купить</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
 
@@ -88,15 +87,15 @@
 </div>
 
 <div id="page-apps" class="hidden">
-    <textarea id="bug-text" placeholder="Текст..."></textarea>
-    <button onclick="sendBug()">Отправить</button>
+    <textarea id="bug-text" placeholder="Опишите проблему..."></textarea>
+    <button onclick="sendAction('bug_report', {message: document.getElementById('bug-text').value, nick: params.get('nick')})">Отправить</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
 
 <div id="page-transfer" class="hidden">
     <select id="u-select"></select>
     <input type="number" id="t-amount" placeholder="Сумма">
-    <button onclick="doTransfer()">Отправить</button>
+    <button onclick="doTransfer()">Перевести</button>
     <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
 </div>
 
@@ -105,12 +104,16 @@
     tg.expand();
     let params = new URLSearchParams(window.location.search);
 
+    function sendAction(action, data) {
+        tg.sendData(JSON.stringify({action: action, ...data}));
+    }
+
     function load() {
         try {
             if (params.get('exists') !== "true") {
                 showPage('register-page');
             } else {
-                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Житель");
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "");
                 document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "");
 
                 const accs = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
@@ -125,7 +128,7 @@
                 const bList = document.getElementById('bonds-list');
                 bList.innerHTML = bonds.length ? "" : "Нет активных бумаг";
                 bonds.forEach(b => {
-                    bList.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>${b.amount} GOLD<br><small>${b.date}</small></div>`;
+                    bList.innerHTML += `<div class="card" style="border-left:4px solid #00ff00"><b>${b.name}</b><br>${b.amount} GOLD<br><small>${b.date}</small></div>`;
                 });
 
                 const users = decodeURIComponent(params.get('users') || "").split(',');
@@ -151,24 +154,29 @@
         document.getElementById(id).classList.remove('hidden');
     }
 
-    function register() {
-        tg.sendData(JSON.stringify({ action: 'register', nick: document.getElementById('reg-nick').value, role: document.getElementById('reg-role').value }));
-    }
-
     function doTransfer() {
-        tg.sendData(JSON.stringify({ action: 'transfer', amount: parseFloat(document.getElementById('t-amount').value), target_id: document.getElementById('u-select').value, bank_id: parseInt(document.getElementById('bank-select').value) }));
+        sendAction('transfer', {
+            amount: parseFloat(document.getElementById('t-amount').value),
+            target_id: document.getElementById('u-select').value,
+            bank_id: parseInt(document.getElementById('bank-select').value)
+        });
     }
 
     function sendWithdraw() {
-        tg.sendData(JSON.stringify({ action: 'withdraw_request', amount: parseFloat(document.getElementById('w-amount').value), bank_id: parseInt(document.getElementById('bank-select').value), nick: params.get('nick') }));
+        sendAction('withdraw_request', {
+            amount: parseFloat(document.getElementById('w-amount').value),
+            bank_id: parseInt(document.getElementById('bank-select').value),
+            nick: params.get('nick')
+        });
     }
 
     function sendBond() {
-        tg.sendData(JSON.stringify({ action: 'bond_request', bond_name: document.getElementById('b-type').value, amount: parseFloat(document.getElementById('b-amount').value), bank_id: parseInt(document.getElementById('bank-select').value), nick: params.get('nick') }));
-    }
-
-    function sendBug() {
-        tg.sendData(JSON.stringify({ action: 'bug_report', message: document.getElementById('bug-text').value, nick: params.get('nick') }));
+        sendAction('bond_request', {
+            bond_name: document.getElementById('b-type').value,
+            amount: parseFloat(document.getElementById('b-amount').value),
+            bank_id: parseInt(document.getElementById('bank-select').value),
+            nick: params.get('nick')
+        });
     }
 
     load();
