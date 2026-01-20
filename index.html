@@ -12,7 +12,7 @@
         .info-bar { background: #b8860b33; padding: 12px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; border: 1px solid var(--gold); }
         input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; font-size: 16px; color: #000; cursor: pointer; margin-top: 5px; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .bond-item { border-bottom: 1px solid #444; padding: 10px 0; }
         .bond-item:last-child { border: none; }
         .nav-btn { background: #333; color: white; margin-top: 10px; }
@@ -20,7 +20,7 @@
     </style>
 </head>
 <body>
-    <div id="loader">⏳ Подключение к реестру Швеции...</div>
+    <div id="loader" style="text-align: center; padding-top: 50px;">⏳ Подключение к реестру Швеции...</div>
 
     <div id="reg-screen" class="hidden">
         <h2 style="color: var(--gold)">Регистрация</h2>
@@ -54,12 +54,10 @@
 
     <div id="transfer-screen" class="hidden">
         <h3>Перевод GOLD</h3>
-        <p style="font-size: 14px; opacity: 0.8;">Выберите получателя из списка:</p>
-        
+        <p style="font-size: 14px; opacity: 0.8;">Выберите получателя:</p>
         <select id="t-id">
             <option value="" disabled selected>Загрузка списка...</option>
         </select>
-
         <input type="number" id="t-sum" placeholder="Сумма перевода">
         <button onclick="action('transfer')">Подтвердить перевод</button>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
@@ -90,8 +88,16 @@
         const params = new URLSearchParams(window.location.search);
 
         function showPage(page) {
-            document.querySelectorAll('div[id$="-screen"]').forEach(d => d.classList.add('hidden'));
-            document.getElementById(page + '-screen').classList.remove('hidden');
+            // Исправленная логика переключения экранов
+            document.getElementById('reg-screen').classList.add('hidden');
+            document.getElementById('main-screen').classList.add('hidden');
+            document.getElementById('transfer-screen').classList.add('hidden');
+            document.getElementById('withdraw-screen').classList.add('hidden');
+            document.getElementById('bonds-screen').classList.add('hidden');
+            document.getElementById('market-screen').classList.add('hidden');
+            
+            const target = document.getElementById(page + '-screen');
+            if(target) target.classList.remove('hidden');
         }
 
         function register() {
@@ -101,97 +107,99 @@
             tg.sendData(JSON.stringify({action: 'register', nick, role}));
         }
 
-        // ПЕРЕРАБОТАННАЯ ФУНКЦИЯ ПОКУПКИ
         function buyBond(id, minAmount) {
             const amount = parseFloat(prompt(`Введите сумму инвестиции (минимум ${minAmount} GOLD):`, minAmount));
-            
             if (isNaN(amount) || amount < minAmount) {
-                alert(`Минимальная сумма вклада для этой облигации: ${minAmount} GOLD`);
+                alert(`Минимальная сумма: ${minAmount} GOLD`);
                 return;
             }
-
-            if(confirm(`Подтверждаете инвестицию в размере ${amount} GOLD?`)) {
+            if(confirm(`Инвестировать ${amount} GOLD?`)) {
                 tg.sendData(JSON.stringify({
                     action: 'buy_bond', 
                     bond_id: parseInt(id),
                     amount: amount,
-                    nick: decodeURIComponent(params.get('nick'))
+                    nick: decodeURIComponent(params.get('nick') || "User")
                 }));
-                // Мы не закрываем приложение сразу, чтобы пользователь видел результат в чате, 
-                // но если логика вашего бота требует закрытия - раскомментируйте tg.close()
             }
         }
 
         function action(type) {
-            const data = { action: type, nick: decodeURIComponent(params.get('nick')) };
+            const data = { action: type, nick: decodeURIComponent(params.get('nick') || "User") };
             if(type === 'transfer') {
-                const targetSelect = document.getElementById('t-id');
-                data.target_id = targetSelect.value;
+                data.target_id = document.getElementById('t-id').value;
                 data.amount = parseFloat(document.getElementById('t-sum').value);
-                
                 if (!data.target_id) return alert("Выберите получателя!");
             } else {
                 data.amount = parseFloat(document.getElementById('w-sum').value);
             }
-            
-            if (!data.amount || data.amount <= 0) return alert("Введите корректную сумму!");
-            
+            if (!data.amount || data.amount <= 0) return alert("Введите сумму!");
             tg.sendData(JSON.stringify(data));
         }
 
         window.onload = () => {
             const exists = params.get('exists') === 'true';
             document.getElementById('loader').classList.add('hidden');
-            if (!exists) { showPage('reg'); return; }
             
-            showPage('main');
-            document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick'));
-            document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
-            document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
-            document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
+            if (!exists) { 
+                showPage('reg'); 
+            } else {
+                showPage('main');
+                
+                // Рендер основных данных
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Ник");
+                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "Должность");
+                document.getElementById('u-bal').innerText = (params.get('bal') || "0.00") + " GOLD";
+                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
 
-            const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
-            const currentId = params.get('tg_id');
-            const select = document.getElementById('t-id');
-            select.innerHTML = '<option value="" disabled selected>Выберите гражданина</option>';
-            
-            users.forEach(u => {
-                if (u.id !== currentId) {
-                    const opt = document.createElement('option');
-                    opt.value = u.id;
-                    opt.text = u.nick;
-                    select.appendChild(opt);
-                }
-            });
+                // Рендер списка пользователей
+                try {
+                    const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
+                    const currentId = params.get('tg_id');
+                    const select = document.getElementById('t-id');
+                    select.innerHTML = '<option value="" disabled selected>Выберите гражданина</option>';
+                    users.forEach(u => {
+                        if (String(u.id) !== String(currentId)) {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.text = u.nick;
+                            select.appendChild(opt);
+                        }
+                    });
+                } catch(e) { console.error("Users parse error"); }
 
-            // ПЕРЕРАБОТАННЫЙ ВЫВОД ПОРТФЕЛЯ
-            const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
-            const list = document.getElementById('bonds-list');
-            list.innerHTML = bonds.length ? "" : "<small>Нет активных инвестиций.</small>";
-            bonds.forEach(b => {
-                list.innerHTML += `
-                    <div class="bond-item">
-                        <b style="color: var(--gold)">${b.name}</b><br>
-                        Вложено: ${b.amount.toFixed(2)} GOLD<br>
-                        Текущая ценность: <span style="color: #00ff00">+${b.current_value.toFixed(2)}</span><br>
-                        <small>Ставка: ${b.rate}%/день | Дата: ${b.date}</small>
-                    </div>`;
-            });
+                // Рендер портфеля
+                try {
+                    const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
+                    const list = document.getElementById('bonds-list');
+                    list.innerHTML = bonds.length ? "" : "<small>Нет активных инвестиций.</small>";
+                    bonds.forEach(b => {
+                        list.innerHTML += `
+                            <div class="bond-item">
+                                <b style="color: var(--gold)">${b.name}</b><br>
+                                Вложено: ${b.amount.toFixed(2)} GOLD<br>
+                                Текущая ценность: <span style="color: #00ff00">+${b.current_value.toFixed(2)}</span><br>
+                                <small>Ставка: ${b.rate}% | ${b.date}</small>
+                            </div>`;
+                    });
+                } catch(e) { console.error("Bonds parse error"); }
 
-            // ПЕРЕРАБОТАННЫЙ ВЫВОД МАГАЗИНА
-            const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
-            const mList = document.getElementById('market-list');
-            mList.innerHTML = market.length ? "" : "<div class='card'>Рынок пуст.</div>";
-            market.forEach(m => {
-                mList.innerHTML += `
-                    <div class="market-item">
-                        <b style="color: var(--gold)">${m.name}</b><br>
-                        Мин. вклад: ${m.price} GOLD<br>
-                        Доход: ${m.rate}% в день<br>
-                        Заморозка: ${m.min_days} дн.<br>
-                        <button onclick="buyBond('${m.id}', ${m.price})">Инвестировать</button>
-                    </div>`;
-            });
+                // Рендер магазина
+                try {
+                    const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
+                    const mList = document.getElementById('market-list');
+                    mList.innerHTML = market.length ? "" : "<div class='card'>Рынок пуст.</div>";
+                    market.forEach(m => {
+                        mList.innerHTML += `
+                            <div class="market-item">
+                                <b style="color: var(--gold)">${m.name}</b><br>
+                                Мин. вклад: ${m.price} GOLD<br>
+                                Доход: ${m.rate}% в день<br>
+                                Заморозка: ${m.min_days} дн.<br>
+                                <button onclick="buyBond('${m.id}', ${m.price})">Инвестировать</button>
+                            </div>`;
+                    });
+                } catch(e) { console.error("Market parse error"); }
+            }
         };
     </script>
 </body>
