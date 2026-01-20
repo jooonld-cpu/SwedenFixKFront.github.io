@@ -15,7 +15,7 @@
         .btn-sec { background: #444; color: white; margin-top: 10px; }
         input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; }
         .hidden { display: none; }
-        #loader { text-align: center; margin-top: 50px; color: var(--gold); }
+        #loader { text-align: center; margin-top: 50px; color: var(--gold); font-size: 1.2em; }
     </style>
 </head>
 <body>
@@ -42,18 +42,8 @@
         <h2 id="bal-val">0.00 GOLD</h2>
     </div>
     <button onclick="showPage('page-transfer')">💸 Перевести игроку</button>
-    <button onclick="showPage('page-bank-move')">🔄 Между счетами</button>
     <button onclick="showPage('page-withdraw')">🏧 Снять наличные</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
-</div>
-
-<div id="page-bank-move" class="hidden">
-    <h3>Межбанковский перевод</h3>
-    <p><small>Перевод с выбранного выше счета на:</small></p>
-    <input type="number" id="move-to-id" placeholder="ID целевого банка">
-    <input type="number" id="move-amount" placeholder="Сумма">
-    <button onclick="doBankMove()">Выполнить перевод</button>
-    <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
 </div>
 
 <div id="page-bonds" class="hidden">
@@ -102,90 +92,106 @@
     }
 
     function load() {
-        document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Житель");
-        document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "");
+        try {
+            // Ник и Роль
+            document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Житель");
+            document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "Гражданин");
 
-        // Загрузка счетов
-        const accs = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
-        const bSel = document.getElementById('bank-select');
-        accs.forEach(a => {
-            let o = new Option(`${a.bank_name} (ID: ${a.bank_id})`, a.bank_id);
-            o.dataset.bal = a.balance;
-            bSel.add(o);
-        });
+            // Счета
+            const accsRaw = params.get('accounts');
+            const bSel = document.getElementById('bank-select');
+            if (accsRaw) {
+                const accs = JSON.parse(decodeURIComponent(accsRaw));
+                bSel.innerHTML = "";
+                accs.forEach(a => {
+                    let o = new Option(`${a.bank_name}`, a.bank_id);
+                    o.dataset.bal = a.balance;
+                    bSel.add(o);
+                });
+            }
 
-        // Загрузка облигаций
-        const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
-        const bList = document.getElementById('bonds-list');
-        bList.innerHTML = bonds.length ? "" : "<p>У вас пока нет ценных бумаг</p>";
-        bonds.forEach(b => {
-            bList.innerHTML += `<div class="card" style="border-left:4px solid #00ff00">
-                <b>${b.name}</b><br>
-                <small>Куплено: ${b.amount.toFixed(2)}</small><br>
-                <span>💰 К выдаче: ${b.current_value.toFixed(2)}</span>
-            </div>`;
-        });
+            // Облигации
+            const bondsRaw = params.get('bonds');
+            const bList = document.getElementById('bonds-list');
+            if (bondsRaw) {
+                const bonds = JSON.parse(decodeURIComponent(bondsRaw));
+                bList.innerHTML = bonds.length ? "" : "<p style='opacity:0.5'>У вас пока нет ценных бумаг</p>";
+                bonds.forEach(b => {
+                    bList.innerHTML += `<div class="card" style="border-left:4px solid #00ff00">
+                        <b>${b.name}</b><br>
+                        <small>Взнос: ${b.amount.toFixed(2)}</small><br>
+                        <span>💰 Текущая цена: ${b.current_value.toFixed(2)}</span>
+                    </div>`;
+                });
+            }
 
-        // Загрузка списка игроков
-        const users = decodeURIComponent(params.get('users') || "").split(',');
-        const uSel = document.getElementById('u-select');
-        users.forEach(u => { if(u.includes(':')) uSel.add(new Option(u.split(':')[1], u.split(':')[0])); });
+            // Список игроков (Защищенный сплит)
+            const usersRaw = params.get('users');
+            const uSel = document.getElementById('u-select');
+            if (usersRaw) {
+                uSel.innerHTML = "";
+                const users = decodeURIComponent(usersRaw).split(',');
+                users.forEach(u => {
+                    if (u.includes(':')) {
+                        const [id, name] = u.split(':');
+                        uSel.add(new Option(name, id));
+                    }
+                });
+            }
 
-        document.getElementById('loader').classList.add('hidden');
-        showPage('main-menu');
-        updateBal();
+            // Завершение загрузки
+            document.getElementById('loader').classList.add('hidden');
+            showPage('main-menu');
+            updateBal();
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loader').innerText = "❌ Ошибка данных. Обратитесь к админу.";
+        }
     }
 
     function updateBal() {
         const s = document.getElementById('bank-select');
-        if (s.options.length > 0) {
-            document.getElementById('bal-val').innerText = parseFloat(s.options[s.selectedIndex].dataset.bal).toFixed(2) + " GOLD";
+        if (s && s.options.length > 0) {
+            const bal = parseFloat(s.options[s.selectedIndex].dataset.bal || 0);
+            document.getElementById('bal-val').innerText = bal.toFixed(2) + " GOLD";
         }
     }
 
     function showPage(id) {
-        ['main-menu','page-finance','page-bonds','page-apps','page-transfer','page-withdraw', 'page-bank-move'].forEach(p => document.getElementById(p).classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
+        const pages = ['main-menu','page-finance','page-bonds','page-apps','page-transfer','page-withdraw'];
+        pages.forEach(p => {
+            const el = document.getElementById(p);
+            if (el) el.classList.add('hidden');
+        });
+        const target = document.getElementById(id);
+        if (target) target.classList.remove('hidden');
     }
 
     function doTransfer() {
-        sendAction('transfer', {
-            amount: parseFloat(document.getElementById('t-amount').value),
-            target_id: document.getElementById('u-select').value,
-            bank_id: parseInt(document.getElementById('bank-select').value)
-        });
-    }
-
-    function doBankMove() {
-        sendAction('bank_transfer', {
-            amount: parseFloat(document.getElementById('move-amount').value),
-            target_id: document.getElementById('move-to-id').value,
-            bank_id: parseInt(document.getElementById('bank-select').value)
-        });
+        const amt = parseFloat(document.getElementById('t-amount').value);
+        const target = document.getElementById('u-select').value;
+        if (!amt || !target) return alert("Заполните все поля");
+        sendAction('transfer', { amount: amt, target_id: target });
     }
 
     function sendWithdraw() {
-        sendAction('withdraw_request', {
-            amount: parseFloat(document.getElementById('w-amount').value),
-            bank_id: parseInt(document.getElementById('bank-select').value),
-            nick: params.get('nick')
-        });
+        const amt = parseFloat(document.getElementById('w-amount').value);
+        if (!amt) return alert("Введите сумму");
+        sendAction('bug_report', { message: `ЗАПРОС ВЫВОДА: ${amt} GOLD` });
     }
 
     function sendBond() {
-        sendAction('bond_request', {
-            bond_name: document.getElementById('b-type').value,
-            amount: parseFloat(document.getElementById('b-amount').value),
-            bank_id: parseInt(document.getElementById('bank-select').value),
-            nick: params.get('nick')
-        });
+        const amt = parseFloat(document.getElementById('b-amount').value);
+        const type = document.getElementById('b-type').value;
+        if (!amt) return alert("Введите сумму");
+        sendAction('bond_request', { bond_name: type, amount: amt });
     }
 
     function sendBug() {
-        sendAction('bug_report', {
-            message: document.getElementById('bug-text').value,
-            nick: params.get('nick')
-        });
+        const msg = document.getElementById('bug-text').value;
+        if (!msg) return alert("Введите текст");
+        sendAction('bug_report', { message: msg });
     }
 
     load();
