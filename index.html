@@ -140,18 +140,18 @@
             document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
             document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
 
-            // --- ЗАПОЛНЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ (НОВОЕ) ---
+            // --- ЗАПОЛНЕНИЕ ВЫПАДАЮЩЕГО СПИСКА ЛЮДЕЙ ---
             const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
             const currentId = params.get('tg_id');
             const select = document.getElementById('t-id');
             select.innerHTML = '<option value="" disabled selected>Выберите гражданина</option>';
             
             users.forEach(u => {
-                // Не показываем себя в списке получателей
+                // Исключаем самого себя из списка
                 if (u.id !== currentId) {
                     const opt = document.createElement('option');
                     opt.value = u.id;
-                    opt.text = `${u.nick}`; // Можно добавить роль: `${u.nick} (${u.role})` если роль передается
+                    opt.text = u.nick;
                     select.appendChild(opt);
                 }
             });
