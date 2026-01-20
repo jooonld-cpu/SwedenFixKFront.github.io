@@ -10,8 +10,8 @@
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--gold); }
         .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .menu-btn { height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card); border: 1px solid #444; border-radius: 12px; color: var(--gold); font-weight: bold; cursor: pointer; }
-        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; background: var(--gold); color: black; font-weight: bold; }
+        .menu-btn { height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card); border: 1px solid #444; border-radius: 12px; color: var(--gold); font-weight: bold; cursor: pointer; text-align: center; }
+        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; background: var(--gold); color: black; font-weight: bold; cursor: pointer; }
         .btn-sec { background: #444; color: white; margin-top: 10px; }
         input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; }
         .hidden { display: none; }
@@ -21,7 +21,7 @@
 </head>
 <body>
 
-<div id="loader">⏳ Загрузка системы...</div>
+<div id="loader">⏳ Загрузка...</div>
 
 <div id="register-page" class="hidden">
     <h2>Регистрация</h2>
@@ -29,9 +29,9 @@
     <select id="reg-role">
         <option value="Гражданин">Гражданин</option>
         <option value="Министр">Министр</option>
-        <option value="Бизнесмен">Бизнесмен</option>
+        <option value="Король">Король</option>
     </select>
-    <button onclick="register()">Начать работу</button>
+    <button onclick="register()">Создать аккаунт</button>
 </div>
 
 <div id="main-menu" class="hidden">
@@ -48,38 +48,36 @@
 </div>
 
 <div id="page-finance" class="hidden">
-    <h3>Мои счета</h3>
+    <h3>Счета</h3>
     <div class="card">
         <select id="bank-select" onchange="updateBal()"></select>
         <h2 id="bal-val">0.00 GOLD</h2>
     </div>
     <button onclick="showPage('page-transfer')">Перевести</button>
-    <button onclick="showPage('page-withdraw')">Снять средства</button>
+    <button onclick="showPage('page-withdraw')">Снять</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
 
 <div id="page-withdraw" class="hidden">
-    <h3>Снятие средств</h3>
-    <input type="number" id="w-amount" placeholder="Сумма снятия">
-    <button onclick="sendWithdraw()">Запросить снятие</button>
+    <h3>Снятие</h3>
+    <input type="number" id="w-amount" placeholder="Сумма">
+    <button onclick="sendWithdraw()">Отправить запрос</button>
     <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
 </div>
 
 <div id="page-bonds" class="hidden">
-    <h3>Ценные бумаги</h3>
-    <button onclick="showPage('sub-my-bonds')">📂 Мои бумаги</button>
-    <button onclick="showPage('sub-buy-bond')">🛒 Купить бумагу</button>
+    <h3>Облигации</h3>
+    <button onclick="showPage('sub-my-bonds')">Мой портфель</button>
+    <button onclick="showPage('sub-buy-bond')">Купить</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
 
 <div id="sub-my-bonds" class="hidden">
-    <h3>Ваш портфель</h3>
     <div id="bonds-list"></div>
     <button class="btn-sec" onclick="showPage('page-bonds')">Назад</button>
 </div>
 
 <div id="sub-buy-bond" class="hidden">
-    <h3>Покупка</h3>
     <select id="b-type">
         <option value="Королевская Облигация">Королевская (1.5%)</option>
         <option value="Государственная Облигация">Государственная (1.0%)</option>
@@ -90,19 +88,12 @@
 </div>
 
 <div id="page-apps" class="hidden">
-    <h3>Заявления</h3>
-    <button onclick="showPage('sub-bug')">🚫 Жалобы</button>
+    <textarea id="bug-text" placeholder="Текст..."></textarea>
+    <button onclick="sendBug()">Отправить</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
 
-<div id="sub-bug" class="hidden">
-    <textarea id="bug-text" placeholder="Текст обращения..."></textarea>
-    <button onclick="sendBug()">Отправить</button>
-    <button class="btn-sec" onclick="showPage('page-apps')">Назад</button>
-</div>
-
 <div id="page-transfer" class="hidden">
-    <h3>Перевод</h3>
     <select id="u-select"></select>
     <input type="number" id="t-amount" placeholder="Сумма">
     <button onclick="doTransfer()">Отправить</button>
@@ -119,7 +110,7 @@
             if (params.get('exists') !== "true") {
                 showPage('register-page');
             } else {
-                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "");
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Житель");
                 document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "");
 
                 const accs = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
@@ -132,7 +123,7 @@
 
                 const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
                 const bList = document.getElementById('bonds-list');
-                bList.innerHTML = bonds.length ? "" : "Нет бумаг";
+                bList.innerHTML = bonds.length ? "" : "Нет активных бумаг";
                 bonds.forEach(b => {
                     bList.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>${b.amount} GOLD<br><small>${b.date}</small></div>`;
                 });
@@ -144,10 +135,7 @@
                 showPage('main-menu');
                 updateBal();
             }
-        } catch (e) {
-            console.error(e);
-            alert("Ошибка загрузки. Нажмите /start в боте.");
-        }
+        } catch (e) { console.error(e); }
         document.getElementById('loader').classList.add('hidden');
     }
 
@@ -159,9 +147,7 @@
     }
 
     function showPage(id) {
-        ['register-page','main-menu','page-finance','page-bonds','sub-my-bonds','sub-buy-bond','page-apps','sub-bug','page-transfer','page-withdraw'].forEach(p => {
-            document.getElementById(p).classList.add('hidden');
-        });
+        ['register-page','main-menu','page-finance','page-bonds','sub-my-bonds','sub-buy-bond','page-apps','page-transfer','page-withdraw'].forEach(p => document.getElementById(p).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
     }
 
