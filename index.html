@@ -7,80 +7,67 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eeeeee; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
-        .card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid var(--gold); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
         .hidden { display: none; }
-        .nick-title { font-size: 24px; margin: 0; color: var(--gold); }
-        .role-subtitle { font-size: 14px; opacity: 0.7; margin-bottom: 20px; }
-        button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 8px 0; cursor: pointer; color: #000; }
-        #loader { text-align: center; padding-top: 100px; font-size: 18px; }
-        .error-box { text-align: center; padding: 40px 20px; }
+        button { width: 100%; padding: 12px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; margin: 5px 0; color: #000; }
+        #loader { text-align: center; padding-top: 50px; }
+        .header { margin-bottom: 20px; }
+        .header h2 { margin: 0; color: var(--gold); }
+        .header p { margin: 5px 0; opacity: 0.7; font-size: 14px; }
     </style>
 </head>
 <body>
-    <div id="loader">⏳ Подключение к реестру...</div>
+    <div id="loader">⏳ Загрузка системы...</div>
 
     <div id="main-menu" class="hidden">
-        <h2 id="u-nick" class="nick-title">Загрузка...</h2>
-        <div id="u-role" class="role-subtitle">Гражданин</div>
-        
-        <div class="card">
-            <small style="color: var(--gold); text-transform: uppercase; letter-spacing: 1px;">Основной счет:</small>
-            <h1 id="bal-val" style="margin: 10px 0 0 0;">0.00 GOLD</h1>
+        <div class="header">
+            <h2 id="u-nick">Никнейм</h2>
+            <p id="u-role">Должность</p>
         </div>
 
-        <button onclick="tg.close()">Выход</button>
+        <div class="card">
+            <small>Ваш баланс:</small>
+            <h1 id="bal-val">0.00 GOLD</h1>
+        </div>
+
+        <button onclick="tg.close()">Закрыть кабинет</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.ready();
 
         const params = new URLSearchParams(window.location.search);
 
-        function cleanParam(name) {
-            let val = params.get(name) || "";
-            return decodeURIComponent(val).trim();
+        function clean(name) {
+            return decodeURIComponent(params.get(name) || "");
         }
 
-        function load() {
-            try {
-                const nick = cleanParam('nick');
-                const role = cleanParam('role');
+        function init() {
+            const nick = clean('nick');
+            const role = clean('role');
 
-                // Проверка авторизации
-                if (!nick || nick === "null" || nick === "") {
-                    document.body.innerHTML = `
-                        <div class="error-box">
-                            <h2>⚠️ Ошибка входа</h2>
-                            <p>Пожалуйста, пройдите регистрацию в боте через команду /start</p>
-                            <button onclick="tg.close()">Закрыть</button>
-                        </div>`;
-                    return;
-                }
-
-                document.getElementById('u-nick').innerText = nick;
-                document.getElementById('u-role').innerText = role;
-
-                // Парсинг баланса (первый счет в списке)
-                const accsRaw = cleanParam('accounts');
-                if (accsRaw) {
-                    const accs = JSON.parse(accsRaw);
-                    if (accs.length > 0) {
-                        document.getElementById('bal-val').innerText = accs[0].balance.toLocaleString() + " GOLD";
-                    }
-                }
-
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('main-menu').classList.remove('hidden');
-            } catch (e) {
-                document.getElementById('loader').innerHTML = "❌ Ошибка загрузки данных";
-                console.error(e);
+            if (!nick) {
+                document.getElementById('loader').innerHTML = "⚠️ Ошибка авторизации. Пройдите регистрацию в боте.";
+                return;
             }
+
+            document.getElementById('u-nick').innerText = nick;
+            document.getElementById('u-role').innerText = role;
+
+            try {
+                const accs = JSON.parse(clean('accounts') || "[]");
+                if (accs.length > 0) {
+                    document.getElementById('bal-val').innerText = accs[0].balance.toFixed(2) + " GOLD";
+                }
+            } catch (e) { console.error("Data error", e); }
+
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
         }
 
-        load();
+        init();
     </script>
 </body>
 </html>
