@@ -3,71 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweden Finance</title>
+    <title>Sweden Kabinet</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eeeeee; }
+        :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eee; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
-        .hidden { display: none; }
+        .info-line { background: #333; padding: 10px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: none; background: #444; color: #fff; box-sizing: border-box;}
         button { width: 100%; padding: 12px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; margin: 5px 0; color: #000; }
-        #loader { text-align: center; padding-top: 50px; }
-        .header { margin-bottom: 20px; }
-        .header h2 { margin: 0; color: var(--gold); }
-        .header p { margin: 5px 0; opacity: 0.7; font-size: 14px; }
+        .hidden { display: none; }
+        h2, h3 { margin: 5px 0; }
     </style>
 </head>
 <body>
     <div id="loader">⏳ Загрузка системы...</div>
 
-    <div id="main-menu" class="hidden">
+    <div id="reg-screen" class="hidden">
+        <h2>Регистрация</h2>
+        <input type="text" id="reg-nick" placeholder="Ваш ник">
+        <input type="text" id="reg-role" placeholder="Ваша должность">
+        <button onclick="register()">Создать аккаунт</button>
+    </div>
+
+    <div id="main-screen" class="hidden">
+        <div class="info-line" id="info-text">Инфо-строка загружается...</div>
+        
         <div class="header">
             <h2 id="u-nick">Никнейм</h2>
-            <p id="u-role">Должность</p>
+            <p id="u-role" style="opacity: 0.7">Должность</p>
         </div>
 
         <div class="card">
             <small>Ваш баланс:</small>
-            <h1 id="bal-val">0.00 GOLD</h1>
+            <h1 id="u-bal">0.00 GOLD</h1>
         </div>
 
-        <button onclick="tg.close()">Закрыть кабинет</button>
+        <h3>Действия</h3>
+        <button onclick="showSection('transfer')">💸 Перевод игроку</button>
+        <button onclick="showSection('withdraw')">🏦 Снятие средств</button>
+        <button onclick="showSection('invest')">📈 Инвестиции (Облигации)</button>
+        
+        <button onclick="tg.close()" style="background: #444; color: #fff; margin-top: 20px;">Выйти</button>
+    </div>
+
+    <div id="transfer-screen" class="hidden">
+        <h3>Перевод игроку</h3>
+        <input type="text" id="t-id" placeholder="ID игрока">
+        <input type="number" id="t-sum" placeholder="Сумма">
+        <button onclick="doAction('transfer')">Отправить</button>
+        <button onclick="showSection('main')">Назад</button>
+    </div>
+
+    <div id="invest-screen" class="hidden">
+        <h3>Мои облигации</h3>
+        <div id="bonds-list"></div>
+        <button onclick="showSection('main')">Назад</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
         const params = new URLSearchParams(window.location.search);
 
-        function clean(name) {
-            return decodeURIComponent(params.get(name) || "");
+        function register() {
+            const n = document.getElementById('reg-nick').value;
+            const r = document.getElementById('reg-role').value;
+            tg.sendData(JSON.stringify({action: 'register', nick: n, role: r}));
         }
 
-        function init() {
-            const nick = clean('nick');
-            const role = clean('role');
+        function showSection(name) {
+            document.querySelectorAll('div[id$="-screen"]').forEach(d => d.classList.add('hidden'));
+            document.getElementById(name + '-screen').classList.remove('hidden');
+        }
 
-            if (!nick) {
-                document.getElementById('loader').innerHTML = "⚠️ Ошибка авторизации. Пройдите регистрацию в боте.";
-                return;
-            }
+        function doAction(act) {
+            const tid = document.getElementById('t-id').value;
+            const sum = parseFloat(document.getElementById('t-sum').value);
+            tg.sendData(JSON.stringify({
+                action: act, 
+                target_id: tid, 
+                amount: sum,
+                nick: decodeURIComponent(params.get('nick'))
+            }));
+        }
 
-            document.getElementById('u-nick').innerText = nick;
-            document.getElementById('u-role').innerText = role;
-
-            try {
-                const accs = JSON.parse(clean('accounts') || "[]");
-                if (accs.length > 0) {
-                    document.getElementById('bal-val').innerText = accs[0].balance.toFixed(2) + " GOLD";
-                }
-            } catch (e) { console.error("Data error", e); }
-
+        // Инициализация
+        window.onload = () => {
+            const exists = params.get('exists') === 'true';
             document.getElementById('loader').classList.add('hidden');
-            document.getElementById('main-menu').classList.remove('hidden');
-        }
 
-        init();
+            if (!exists) {
+                document.getElementById('reg-screen').classList.remove('hidden');
+            } else {
+                document.getElementById('main-screen').classList.remove('hidden');
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick'));
+                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
+                document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
+                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Нет новостей");
+                
+                // Рендер облигаций
+                const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
+                const list = document.getElementById('bonds-list');
+                bonds.forEach(b => {
+                    list.innerHTML += `<div class="card">
+                        <b>${b.name}</b><br>
+                        Сумма: ${b.current_value.toFixed(2)} GOLD<br>
+                        Ставка: ${b.rate}%/день<br>
+                        <small>Дата покупки: ${b.date}</small>
+                    </div>`;
+                });
+            }
+        };
     </script>
 </body>
 </html>
