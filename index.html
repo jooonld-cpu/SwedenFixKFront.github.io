@@ -62,7 +62,6 @@
 
     <div id="withdraw-screen" class="hidden">
         <h3>Снятие средств</h3>
-        <p>Запрос будет отправлен администратору на проверку.</p>
         <input type="number" id="w-sum" placeholder="Сумма снятия">
         <button onclick="action('withdraw')">Отправить запрос</button>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
@@ -93,13 +92,17 @@
         function register() {
             const nick = document.getElementById('reg-nick').value;
             const role = document.getElementById('reg-role').value;
-            if(!nick || !role) return alert("Заполните поля!");
-            tg.sendData(JSON.stringify({action: 'register', nick: nick, role: role}));
+            tg.sendData(JSON.stringify({action: 'register', nick, role}));
         }
 
         function buyBond(id) {
-            if(confirm("Вы уверены, что хотите купить эту облигацию?")) {
-                tg.sendData(JSON.stringify({action: 'buy_bond', bond_id: parseInt(id)}));
+            if(confirm("Отправить заявку админу на покупку этой бумаги?")) {
+                tg.sendData(JSON.stringify({
+                    action: 'buy_bond', 
+                    bond_id: parseInt(id),
+                    nick: decodeURIComponent(params.get('nick'))
+                }));
+                tg.close();
             }
         }
 
@@ -117,45 +120,29 @@
         window.onload = () => {
             const exists = params.get('exists') === 'true';
             document.getElementById('loader').classList.add('hidden');
+            if (!exists) { showPage('reg'); return; }
+            
+            showPage('main');
+            document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick'));
+            document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
+            document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
+            document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
 
-            if (!exists) {
-                showPage('reg');
-            } else {
-                showPage('main');
-                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick'));
-                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
-                document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
-                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новостей пока нет.");
-                
-                // Отрисовка личного портфеля
-                const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
-                const list = document.getElementById('bonds-list');
-                list.innerHTML = ""; // Очистка
-                if(bonds.length === 0) list.innerHTML = "<small>У вас пока нет активных облигаций.</small>";
-                bonds.forEach(b => {
-                    list.innerHTML += `<div class="bond-item">
-                        <b>${b.name}</b><br>
-                        Текущая стоимость: <span style="color:var(--gold)">${b.current_value.toFixed(2)}</span><br>
-                        <small>Рост: ${b.rate}% в день | Куплено: ${b.date}</small>
-                    </div>`;
-                });
+            // Портфель
+            const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
+            const list = document.getElementById('bonds-list');
+            list.innerHTML = bonds.length ? "" : "<small>Нет активов.</small>";
+            bonds.forEach(b => {
+                list.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>Ценность: ${b.current_value.toFixed(2)}<br><small>${b.rate}% | ${b.date}</small></div>`;
+            });
 
-                // Отрисовка магазина (рынка)
-                const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
-                const mList = document.getElementById('market-list');
-                mList.innerHTML = ""; // Очистка
-                if(market.length === 0) mList.innerHTML = "<div class='card'>В магазине пока пусто.</div>";
-                market.forEach(m => {
-                    mList.innerHTML += `
-                        <div class="market-item">
-                            <b style="color:var(--gold)">${m.name}</b><br>
-                            Цена: ${m.price.toFixed(2)} GOLD<br>
-                            Доходность: ${m.rate}% в день<br>
-                            <button onclick="buyBond('${m.id}')" style="padding: 8px; font-size: 14px; margin-top: 10px;">Купить</button>
-                        </div>
-                    `;
-                });
-            }
+            // Магазин
+            const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
+            const mList = document.getElementById('market-list');
+            mList.innerHTML = market.length ? "" : "<div class='card'>Рынок пуст.</div>";
+            market.forEach(m => {
+                mList.innerHTML += `<div class="market-item"><b>${m.name}</b><br>Цена: ${m.price} GOLD<br>Доход: ${m.rate}%<br><button onclick="buyBond('${m.id}')">Купить</button></div>`;
+            });
         };
     </script>
 </body>
