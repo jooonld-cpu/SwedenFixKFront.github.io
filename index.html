@@ -3,41 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweden Finance</title>
+    <title>Sweden Finance System</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eeeeee; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; overflow-x: hidden; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--gold); }
         .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .menu-btn { height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card); border: 1px solid #444; border-radius: 12px; color: var(--gold); font-weight: bold; cursor: pointer; }
-        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; background: var(--gold); color: black; font-weight: bold; }
+        .menu-btn { height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card); border: 1px solid #444; border-radius: 12px; color: var(--gold); font-weight: bold; cursor: pointer; text-align: center; }
+        .menu-btn:active { transform: scale(0.95); background: #3d3d3d; }
+        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; background: var(--gold); color: black; font-weight: bold; font-size: 16px; cursor: pointer; }
+        button:active { opacity: 0.8; }
         .btn-sec { background: #444; color: white; margin-top: 10px; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; font-size: 16px; }
         .hidden { display: none; }
         .header { text-align: center; margin-bottom: 20px; }
         .bond-item { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-bottom: 2px solid var(--gold); }
+        #loader { text-align: center; padding-top: 50px; color: var(--gold); font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="loader">⏳ Загрузка...</div>
+<div id="loader">⏳ Подключение к системе...</div>
 
 <div id="register-page" class="hidden">
     <h2>Регистрация</h2>
-    <input type="text" id="reg-nick" placeholder="Игровой ник">
-    <select id="reg-role">
-        <option value="Гражданин">Гражданин</option>
-        <option value="Министр">Министр</option>
-        <option value="Бизнесмен">Бизнесмен</option>
-    </select>
-    <button onclick="register()">Зарегистрироваться</button>
+    <div class="card">
+        <input type="text" id="reg-nick" placeholder="Игровой ник">
+        <select id="reg-role">
+            <option value="Гражданин">Гражданин</option>
+            <option value="Министр">Министр</option>
+            <option value="Бизнесмен">Бизнесмен</option>
+        </select>
+        <button onclick="register()">Создать аккаунт</button>
+    </div>
 </div>
 
 <div id="main-menu" class="hidden">
     <div class="header">
-        <h2 id="u-nick">Ник</h2>
-        <div id="u-role" style="opacity: 0.6;">Роль</div>
+        <h2 id="u-nick">Загрузка...</h2>
+        <div id="u-role" style="opacity: 0.6; font-size: 0.9em;">Роль</div>
     </div>
     <div class="grid-menu">
         <div class="menu-btn" onclick="showPage('page-finance')">💰<br>Финансы</div>
@@ -53,13 +58,24 @@
         <select id="bank-select" onchange="updateBal()"></select>
         <h2 id="bal-val">0.00 GOLD</h2>
     </div>
-    <button onclick="showPage('page-transfer')">Перевести</button>
+    <button onclick="showPage('page-transfer')">💸 Перевести</button>
+    <button onclick="showPage('page-withdraw')">🏧 Снять средства</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
+</div>
+
+<div id="page-withdraw" class="hidden">
+    <h3>Запрос на снятие</h3>
+    <div class="card">
+        <p style="font-size: 0.8em; opacity: 0.7;">Золото будет списано со счета после одобрения администратором.</p>
+        <input type="number" id="w-amount" placeholder="Сумма для снятия">
+        <button onclick="sendWithdraw()">Отправить запрос</button>
+    </div>
+    <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
 </div>
 
 <div id="page-bonds" class="hidden">
     <h3>Ценные бумаги</h3>
-    <button onclick="showPage('sub-my-bonds')">📂 Мои ценные бумаги</button>
+    <button onclick="showPage('sub-my-bonds')">📂 Мой портфель</button>
     <button onclick="showPage('sub-buy-bond')">🛒 Купить облигацию</button>
     <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
 </div>
@@ -71,13 +87,15 @@
 </div>
 
 <div id="sub-buy-bond" class="hidden">
-    <h3>Покупка</h3>
-    <select id="b-type">
-        <option value="Королевская Облигация">Королевская (1.5%)</option>
-        <option value="Муниципальная">Муниципальная (0.7%)</option>
-    </select>
-    <input type="number" id="b-amount" placeholder="Сумма">
-    <button onclick="sendBond()">Отправить заявку</button>
+    <h3>Покупка облигации</h3>
+    <div class="card">
+        <select id="b-type">
+            <option value="Королевская Облигация">Королевская (1.5%)</option>
+            <option value="Муниципальная Облигация">Муниципальная (0.7%)</option>
+        </select>
+        <input type="number" id="b-amount" placeholder="Сумма инвестиции">
+        <button onclick="sendBond()">Купить</button>
+    </div>
     <button class="btn-sec" onclick="showPage('page-bonds')">Назад</button>
 </div>
 
@@ -88,91 +106,155 @@
 </div>
 
 <div id="sub-bug" class="hidden">
-    <h3>Жалоба</h3>
-    <textarea id="bug-text" maxlength="500" rows="5" placeholder="Опишите проблему (до 500 симв.)"></textarea>
-    <button onclick="sendBug()">Отправить Королю</button>
+    <h3>Жалоба Королю</h3>
+    <div class="card">
+        <textarea id="bug-text" maxlength="500" rows="5" placeholder="Опишите проблему максимально подробно..."></textarea>
+        <button onclick="sendBug()">Отправить</button>
+    </div>
     <button class="btn-sec" onclick="showPage('page-apps')">Назад</button>
 </div>
 
 <div id="page-transfer" class="hidden">
-    <h3>Перевод</h3>
-    <select id="u-select"></select>
-    <input type="number" id="t-amount" placeholder="Сумма">
-    <button onclick="doTransfer()">Отправить</button>
+    <h3>Перевод игроку</h3>
+    <div class="card">
+        <select id="u-select"></select>
+        <input type="number" id="t-amount" placeholder="Сумма">
+        <button onclick="doTransfer()">Отправить золото</button>
+    </div>
     <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
+    tg.expand();
     let params = new URLSearchParams(window.location.search);
 
     function load() {
-        if (params.get('exists') !== "true") {
-            showPage('register-page');
-        } else {
-            document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick'));
-            document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
-            
-            // Заполнение банков
-            const accs = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
-            const bSel = document.getElementById('bank-select');
-            accs.forEach(a => {
-                let o = new Option(a.bank_name, a.bank_id);
-                o.dataset.bal = a.balance;
-                bSel.add(o);
-            });
+        try {
+            if (params.get('exists') !== "true") {
+                showPage('register-page');
+            } else {
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Житель");
+                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "Гражданин");
+                
+                // Заполнение банков
+                const accs = JSON.parse(decodeURIComponent(params.get('accounts') || "[]"));
+                const bSel = document.getElementById('bank-select');
+                bSel.innerHTML = "";
+                accs.forEach(a => {
+                    let o = new Option(a.bank_name, a.bank_id);
+                    o.dataset.bal = a.balance;
+                    bSel.add(o);
+                });
 
-            // Заполнение облигаций
-            const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
-            const bList = document.getElementById('bonds-list');
-            bonds.forEach(b => {
-                bList.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>${b.amount} GOLD<br><small>Выдана: ${b.date}</small></div>`;
-            });
+                // Заполнение облигаций
+                const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
+                const bList = document.getElementById('bonds-list');
+                bList.innerHTML = bonds.length ? "" : "<p style='opacity:0.5; text-align:center;'>У вас нет активных бумаг</p>";
+                bonds.forEach(b => {
+                    bList.innerHTML += `<div class="bond-item"><b>${b.name}</b><br>${b.amount.toFixed(2)} GOLD<br><small>Выдана: ${b.date}</small></div>`;
+                });
 
-            // Заполнение юзеров
-            const users = decodeURIComponent(params.get('users') || "").split(',');
-            const uSel = document.getElementById('u-select');
-            users.forEach(u => { if(u.includes(':')) uSel.add(new Option(u.split(':')[1], u.split(':')[0])); });
+                // Заполнение юзеров
+                const usersStr = decodeURIComponent(params.get('users') || "");
+                const uSel = document.getElementById('u-select');
+                uSel.innerHTML = "<option value=''>-- Выберите игрока --</option>";
+                if (usersStr) {
+                    usersStr.split(',').forEach(u => { 
+                        if(u.includes(':')) uSel.add(new Option(u.split(':')[1], u.split(':')[0])); 
+                    });
+                }
 
-            showPage('main-menu');
-            updateBal();
+                showPage('main-menu');
+                updateBal();
+            }
+        } catch (e) {
+            console.error("Load Error:", e);
+            alert("Ошибка загрузки данных. Пожалуйста, обновите страницу через бота.");
         }
         document.getElementById('loader').classList.add('hidden');
     }
 
     function updateBal() {
         const s = document.getElementById('bank-select');
-        document.getElementById('bal-val').innerText = parseFloat(s.options[s.selectedIndex]?.dataset.bal || 0).toFixed(2) + " GOLD";
+        if (s.selectedIndex === -1) return;
+        const bal = parseFloat(s.options[s.selectedIndex].dataset.bal || 0);
+        document.getElementById('bal-val').innerText = bal.toLocaleString(undefined, {minimumFractionDigits: 2}) + " GOLD";
     }
 
     function showPage(id) {
-        ['register-page','main-menu','page-finance','page-bonds','sub-my-bonds','sub-buy-bond','page-apps','sub-bug','page-transfer'].forEach(p => document.getElementById(p).classList.add('hidden'));
+        const pages = ['register-page','main-menu','page-finance','page-bonds','sub-my-bonds','sub-buy-bond','page-apps','sub-bug','page-transfer','page-withdraw'];
+        pages.forEach(p => {
+            const el = document.getElementById(p);
+            if(el) el.classList.add('hidden');
+        });
         document.getElementById(id).classList.remove('hidden');
     }
 
-    function sendBug() {
-        const txt = document.getElementById('bug-text').value;
-        if(!txt) return;
-        tg.sendData(JSON.stringify({ action: 'bug_report', message: txt, nick: params.get('nick') }));
-        tg.close();
-    }
-
     function register() {
-        tg.sendData(JSON.stringify({ action: 'register', nick: document.getElementById('reg-nick').value, role: document.getElementById('reg-role').value }));
+        const nick = document.getElementById('reg-nick').value;
+        const role = document.getElementById('reg-role').value;
+        if(!nick) return alert("Введите ник!");
+        tg.sendData(JSON.stringify({ action: 'register', nick: nick, role: role }));
         tg.close();
     }
 
     function doTransfer() {
-        tg.sendData(JSON.stringify({ action: 'transfer', amount: parseFloat(document.getElementById('t-amount').value), target_id: document.getElementById('u-select').value, bank_id: parseInt(document.getElementById('bank-select').value) }));
+        const amount = parseFloat(document.getElementById('t-amount').value);
+        const target = document.getElementById('u-select').value;
+        const bank = parseInt(document.getElementById('bank-select').value);
+        if(!amount || !target) return alert("Заполните все поля!");
+        
+        tg.sendData(JSON.stringify({ 
+            action: 'transfer', 
+            amount: amount, 
+            target_id: target, 
+            bank_id: bank,
+            nick: params.get('nick')
+        }));
+        tg.close();
+    }
+
+    function sendWithdraw() {
+        const amount = parseFloat(document.getElementById('w-amount').value);
+        if(!amount || amount <= 0) return alert("Введите корректную сумму!");
+        
+        tg.sendData(JSON.stringify({
+            action: 'withdraw_request',
+            amount: amount,
+            bank_id: parseInt(document.getElementById('bank-select').value),
+            nick: params.get('nick')
+        }));
         tg.close();
     }
 
     function sendBond() {
-        tg.sendData(JSON.stringify({ action: 'bond_request', bond_name: document.getElementById('b-type').value, amount: parseFloat(document.getElementById('b-amount').value), bank_id: parseInt(document.getElementById('bank-select').value), nick: params.get('nick') }));
+        const amount = parseFloat(document.getElementById('b-amount').value);
+        const type = document.getElementById('b-type').value;
+        if(!amount || amount <= 0) return alert("Введите сумму покупки!");
+        
+        tg.sendData(JSON.stringify({ 
+            action: 'bond_request', 
+            bond_name: type, 
+            amount: amount, 
+            bank_id: parseInt(document.getElementById('bank-select').value), 
+            nick: params.get('nick') 
+        }));
         tg.close();
     }
 
-    load();
+    function sendBug() {
+        const txt = document.getElementById('bug-text').value;
+        if(!txt || txt.length < 5) return alert("Опишите проблему подробнее!");
+        tg.sendData(JSON.stringify({ 
+            action: 'bug_report', 
+            message: txt, 
+            nick: params.get('nick') 
+        }));
+        tg.close();
+    }
+
+    window.onload = load;
 </script>
 </body>
 </html>
