@@ -3,62 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweden Kabinet</title>
+    <title>Sweden Finance</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eee; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
-        .info-line { background: #333; padding: 10px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: none; background: #444; color: #fff; box-sizing: border-box;}
-        button { width: 100%; padding: 12px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; margin: 5px 0; color: #000; }
+        .info-bar { background: #b8860b33; padding: 12px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; border: 1px solid var(--gold); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; font-size: 16px; color: #000; cursor: pointer; margin-top: 5px; }
         .hidden { display: none; }
-        h2, h3 { margin: 5px 0; }
+        .bond-item { border-bottom: 1px solid #444; padding: 10px 0; }
+        .bond-item:last-child { border: none; }
+        .nav-btn { background: #333; color: white; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div id="loader">⏳ Загрузка системы...</div>
+    <div id="loader">⏳ Подключение к реестру Швеции...</div>
 
     <div id="reg-screen" class="hidden">
-        <h2>Регистрация</h2>
-        <input type="text" id="reg-nick" placeholder="Ваш ник">
+        <h2 style="color: var(--gold)">Регистрация</h2>
+        <p>Для доступа к финансам создайте игровой профиль:</p>
+        <input type="text" id="reg-nick" placeholder="Ваш никнейм">
         <input type="text" id="reg-role" placeholder="Ваша должность">
         <button onclick="register()">Создать аккаунт</button>
     </div>
 
     <div id="main-screen" class="hidden">
-        <div class="info-line" id="info-text">Инфо-строка загружается...</div>
+        <div class="info-bar" id="info-text">Загрузка новостей...</div>
         
-        <div class="header">
-            <h2 id="u-nick">Никнейм</h2>
-            <p id="u-role" style="opacity: 0.7">Должность</p>
+        <div style="margin-bottom: 20px;">
+            <h2 id="u-nick" style="margin:0; color: var(--gold)">Никнейм</h2>
+            <div id="u-role" style="opacity: 0.7; font-size: 14px;">Должность</div>
         </div>
 
         <div class="card">
-            <small>Ваш баланс:</small>
-            <h1 id="u-bal">0.00 GOLD</h1>
+            <small style="text-transform: uppercase; color: var(--gold)">Ваш баланс</small>
+            <h1 id="u-bal" style="margin: 10px 0 0 0;">0.00 GOLD</h1>
         </div>
 
-        <h3>Действия</h3>
-        <button onclick="showSection('transfer')">💸 Перевод игроку</button>
-        <button onclick="showSection('withdraw')">🏦 Снятие средств</button>
-        <button onclick="showSection('invest')">📈 Инвестиции (Облигации)</button>
+        <h3>Операции</h3>
+        <button onclick="showPage('transfer')">💸 Перевод игроку</button>
+        <button onclick="showPage('withdraw')">🏦 Снятие средств</button>
+        <button onclick="showPage('bonds')" style="background: #daa520">📈 Мои Инвестиции</button>
         
-        <button onclick="tg.close()" style="background: #444; color: #fff; margin-top: 20px;">Выйти</button>
+        <button onclick="tg.close()" class="nav-btn">Закрыть</button>
     </div>
 
     <div id="transfer-screen" class="hidden">
-        <h3>Перевод игроку</h3>
-        <input type="text" id="t-id" placeholder="ID игрока">
-        <input type="number" id="t-sum" placeholder="Сумма">
-        <button onclick="doAction('transfer')">Отправить</button>
-        <button onclick="showSection('main')">Назад</button>
+        <h3>Перевод GOLD</h3>
+        <input type="text" id="t-id" placeholder="Telegram ID получателя">
+        <input type="number" id="t-sum" placeholder="Сумма перевода">
+        <button onclick="action('transfer')">Подтвердить перевод</button>
+        <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
-    <div id="invest-screen" class="hidden">
-        <h3>Мои облигации</h3>
-        <div id="bonds-list"></div>
-        <button onclick="showSection('main')">Назад</button>
+    <div id="withdraw-screen" class="hidden">
+        <h3>Снятие средств</h3>
+        <p>Запрос будет отправлен администратору на проверку.</p>
+        <input type="number" id="w-sum" placeholder="Сумма снятия">
+        <button onclick="action('withdraw')">Отправить запрос</button>
+        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+    </div>
+
+    <div id="bonds-screen" class="hidden">
+        <h3>Инвестиционный портфель</h3>
+        <div id="bonds-list" class="card"></div>
+        <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
     <script>
@@ -66,51 +77,50 @@
         tg.expand();
         const params = new URLSearchParams(window.location.search);
 
-        function register() {
-            const n = document.getElementById('reg-nick').value;
-            const r = document.getElementById('reg-role').value;
-            tg.sendData(JSON.stringify({action: 'register', nick: n, role: r}));
-        }
-
-        function showSection(name) {
+        function showPage(page) {
             document.querySelectorAll('div[id$="-screen"]').forEach(d => d.classList.add('hidden'));
-            document.getElementById(name + '-screen').classList.remove('hidden');
+            document.getElementById(page + '-screen').classList.remove('hidden');
         }
 
-        function doAction(act) {
-            const tid = document.getElementById('t-id').value;
-            const sum = parseFloat(document.getElementById('t-sum').value);
-            tg.sendData(JSON.stringify({
-                action: act, 
-                target_id: tid, 
-                amount: sum,
-                nick: decodeURIComponent(params.get('nick'))
-            }));
+        function register() {
+            const nick = document.getElementById('reg-nick').value;
+            const role = document.getElementById('reg-role').value;
+            if(!nick || !role) return alert("Заполните поля!");
+            tg.sendData(JSON.stringify({action: 'register', nick: nick, role: role}));
         }
 
-        // Инициализация
+        function action(type) {
+            const data = { action: type, nick: decodeURIComponent(params.get('nick')) };
+            if(type === 'transfer') {
+                data.target_id = document.getElementById('t-id').value;
+                data.amount = parseFloat(document.getElementById('t-sum').value);
+            } else {
+                data.amount = parseFloat(document.getElementById('w-sum').value);
+            }
+            tg.sendData(JSON.stringify(data));
+        }
+
         window.onload = () => {
             const exists = params.get('exists') === 'true';
             document.getElementById('loader').classList.add('hidden');
 
             if (!exists) {
-                document.getElementById('reg-screen').classList.remove('hidden');
+                showPage('reg');
             } else {
-                document.getElementById('main-screen').classList.remove('hidden');
+                showPage('main');
                 document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick'));
                 document.getElementById('u-role').innerText = decodeURIComponent(params.get('role'));
                 document.getElementById('u-bal').innerText = params.get('bal') + " GOLD";
-                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Нет новостей");
+                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новостей пока нет.");
                 
-                // Рендер облигаций
                 const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
                 const list = document.getElementById('bonds-list');
+                if(bonds.length === 0) list.innerHTML = "<small>У вас пока нет активных облигаций.</small>";
                 bonds.forEach(b => {
-                    list.innerHTML += `<div class="card">
+                    list.innerHTML += `<div class="bond-item">
                         <b>${b.name}</b><br>
-                        Сумма: ${b.current_value.toFixed(2)} GOLD<br>
-                        Ставка: ${b.rate}%/день<br>
-                        <small>Дата покупки: ${b.date}</small>
+                        Текущая стоимость: <span style="color:var(--gold)">${b.current_value.toFixed(2)}</span><br>
+                        <small>Рост: ${b.rate}% в день | От ${b.date}</small>
                     </div>`;
                 });
             }
