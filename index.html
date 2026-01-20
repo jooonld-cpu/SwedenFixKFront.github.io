@@ -1,200 +1,158 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweden Finance</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eeeeee; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--gold); }
-        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .menu-btn { height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--card); border: 1px solid #444; border-radius: 12px; color: var(--gold); font-weight: bold; cursor: pointer; text-align: center; }
-        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 10px; background: var(--gold); color: black; font-weight: bold; cursor: pointer; }
-        .btn-sec { background: #444; color: white; margin-top: 10px; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #333; color: white; border: 1px solid #444; box-sizing: border-box; }
-        .hidden { display: none; }
-        #loader { text-align: center; margin-top: 50px; color: var(--gold); font-size: 1.2em; }
-    </style>
-</head>
-<body>
+package main
 
-<div id="loader">⏳ Загрузка системы...</div>
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
-<div id="main-menu" class="hidden">
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h2 id="u-nick">Ник</h2>
-        <div id="u-role" style="opacity: 0.6;">Роль</div>
-    </div>
-    <div class="grid-menu">
-        <div class="menu-btn" onclick="showPage('page-finance')">💰<br>Счета</div>
-        <div class="menu-btn" onclick="showPage('page-bonds')">📈<br>Бумаги</div>
-        <div class="menu-btn" onclick="showPage('page-apps')">📝<br>Помощь</div>
-        <div class="menu-btn" onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit')">📜<br>Законы</div>
-    </div>
-</div>
+	_ "github.com/lib/pq"
+	"gopkg.in/telebot.v3"
+)
 
-<div id="page-finance" class="hidden">
-    <h3>Кошелек</h3>
-    <div class="card">
-        <select id="bank-select" onchange="updateBal()"></select>
-        <h2 id="bal-val">0.00 GOLD</h2>
-    </div>
-    <button onclick="showPage('page-transfer')">💸 Перевести игроку</button>
-    <button onclick="showPage('page-withdraw')">🏧 Снять наличные</button>
-    <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
-</div>
+const AdminID = 7631664265
+const WebAppURL = "https://jooonld-cpu.github.io/SwedenFixKFront.github.io/"
 
-<div id="page-bonds" class="hidden">
-    <h3>Инвестиции</h3>
-    <div id="bonds-list"></div>
-    <hr>
-    <h4>Купить новую</h4>
-    <select id="b-type">
-        <option value="Королевская Облигация">Королевская (1.5%)</option>
-        <option value="Государственная Облигация">Государственная (1.0%)</option>
-    </select>
-    <input type="number" id="b-amount" placeholder="Сумма">
-    <button onclick="sendBond()">Отправить заявку</button>
-    <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
-</div>
+var userState = make(map[int64]string)
+var tempReg = make(map[int64]map[string]string)
 
-<div id="page-apps" class="hidden">
-    <h3>Жалобы и ошибки</h3>
-    <textarea id="bug-text" rows="5" placeholder="Опишите вашу проблему..."></textarea>
-    <button onclick="sendBug()">Отправить админу</button>
-    <button class="btn-sec" onclick="showPage('main-menu')">Назад</button>
-</div>
+type Bond struct {
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	Amount       float64 `json:"amount"`
+	Rate         float64 `json:"rate"`
+	CurrentValue float64 `json:"current_value"`
+	Date         string  `json:"date"`
+}
 
-<div id="page-transfer" class="hidden">
-    <h3>Перевод игроку</h3>
-    <select id="u-select"></select>
-    <input type="number" id="t-amount" placeholder="Сумма">
-    <button onclick="doTransfer()">Отправить золото</button>
-    <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
-</div>
+type WebAppData struct {
+	Action   string  `json:"action"`
+	TargetID string  `json:"target_id"`
+	Amount   float64 `json:"amount"`
+	BondName string  `json:"bond_name"`
+	Message  string  `json:"message"`
+}
 
-<div id="page-withdraw" class="hidden">
-    <h3>Снятие золота</h3>
-    <input type="number" id="w-amount" placeholder="Сумма к снятию">
-    <button onclick="sendWithdraw()">Запросить выдачу</button>
-    <button class="btn-sec" onclick="showPage('page-finance')">Назад</button>
-</div>
+func main() {
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-    let params = new URLSearchParams(window.location.search);
+	b, err := telebot.NewBot(telebot.Settings{
+		Token:  os.Getenv("BOT_TOKEN"),
+		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    function sendAction(action, data) {
-        tg.sendData(JSON.stringify({action: action, ...data}));
-    }
+	db.Exec(`CREATE TABLE IF NOT EXISTS users (tg_id TEXT PRIMARY KEY, nickname TEXT, role TEXT, balance FLOAT DEFAULT 0)`)
+	db.Exec(`CREATE TABLE IF NOT EXISTS bonds (id SERIAL PRIMARY KEY, user_id TEXT, name TEXT, amount FLOAT, rate FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`)
+	db.Exec(`CREATE TABLE IF NOT EXISTS reports (id SERIAL PRIMARY KEY, user_id TEXT, text TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`)
 
-    function load() {
-        try {
-            // Ник и Роль
-            document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Житель");
-            document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "Гражданин");
+	calcBond := func(amount, rate float64, t time.Time) float64 {
+		days := math.Floor(time.Since(t).Hours() / 24)
+		if days < 0 { days = 0 }
+		return amount * math.Pow(1+(rate/100), days)
+	}
 
-            // Счета
-            const accsRaw = params.get('accounts');
-            const bSel = document.getElementById('bank-select');
-            if (accsRaw) {
-                const accs = JSON.parse(decodeURIComponent(accsRaw));
-                bSel.innerHTML = "";
-                accs.forEach(a => {
-                    let o = new Option(`${a.bank_name}`, a.bank_id);
-                    o.dataset.bal = a.balance;
-                    bSel.add(o);
-                });
-            }
+	b.Handle("/start", func(c telebot.Context) error {
+		uid := strconv.FormatInt(c.Sender().ID, 10)
+		var exists bool
+		db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE tg_id=$1)", uid).Scan(&exists)
+		if !exists {
+			userState[c.Sender().ID] = "reg_nick"
+			return c.Send("🇸🇪 Введите ваш Ник:")
+		}
+		return sendMenu(c, db, calcBond)
+	})
 
-            // Облигации
-            const bondsRaw = params.get('bonds');
-            const bList = document.getElementById('bonds-list');
-            if (bondsRaw) {
-                const bonds = JSON.parse(decodeURIComponent(bondsRaw));
-                bList.innerHTML = bonds.length ? "" : "<p style='opacity:0.5'>У вас пока нет ценных бумаг</p>";
-                bonds.forEach(b => {
-                    bList.innerHTML += `<div class="card" style="border-left:4px solid #00ff00">
-                        <b>${b.name}</b><br>
-                        <small>Взнос: ${b.amount.toFixed(2)}</small><br>
-                        <span>💰 Текущая цена: ${b.current_value.toFixed(2)}</span>
-                    </div>`;
-                });
-            }
+	b.Handle(telebot.OnText, func(c telebot.Context) error {
+		state, ok := userState[c.Sender().ID]
+		if !ok { return nil }
+		uid := strconv.FormatInt(c.Sender().ID, 10)
+		if state == "reg_nick" {
+			tempReg[c.Sender().ID] = map[string]string{"nick": c.Text()}
+			userState[c.Sender().ID] = "reg_role"
+			return c.Send("Введите должность:")
+		} else if state == "reg_role" {
+			db.Exec("INSERT INTO users (tg_id, nickname, role, balance) VALUES ($1, $2, $3, 0)", uid, tempReg[c.Sender().ID]["nick"], c.Text())
+			delete(userState, c.Sender().ID)
+			return sendMenu(c, db, calcBond)
+		}
+		return nil
+	})
 
-            // Список игроков (Защищенный сплит)
-            const usersRaw = params.get('users');
-            const uSel = document.getElementById('u-select');
-            if (usersRaw) {
-                uSel.innerHTML = "";
-                const users = decodeURIComponent(usersRaw).split(',');
-                users.forEach(u => {
-                    if (u.includes(':')) {
-                        const [id, name] = u.split(':');
-                        uSel.add(new Option(name, id));
-                    }
-                });
-            }
+	b.Handle(telebot.OnWebApp, func(c telebot.Context) error {
+		var data WebAppData
+		if err := json.Unmarshal([]byte(c.Message().WebAppData.Data), &data); err != nil {
+			return nil
+		}
+		uid := strconv.FormatInt(c.Sender().ID, 10)
+		if data.Action == "transfer" {
+			tx, _ := db.Begin()
+			var bal float64
+			tx.QueryRow("SELECT balance FROM users WHERE tg_id=$1", uid).Scan(&bal)
+			if bal < data.Amount {
+				tx.Rollback()
+				return c.Send("❌ Недостаточно средств")
+			}
+			tx.Exec("UPDATE users SET balance = balance - $1 WHERE tg_id = $2", data.Amount, uid)
+			tx.Exec("UPDATE users SET balance = balance + $1 WHERE tg_id = $2", data.Amount, data.TargetID)
+			tx.Commit()
+			return c.Send("✅ Перевод выполнен")
+		}
+		return nil
+	})
 
-            // Завершение загрузки
-            document.getElementById('loader').classList.add('hidden');
-            showPage('main-menu');
-            updateBal();
+	b.Start()
+}
 
-        } catch (e) {
-            console.error(e);
-            document.getElementById('loader').innerText = "❌ Ошибка данных. Обратитесь к админу.";
-        }
-    }
+func sendMenu(c telebot.Context, db *sql.DB, calc func(float64, float64, time.Time) float64) error {
+	uid := strconv.FormatInt(c.Sender().ID, 10)
+	var nick, role string
+	var balance float64
+	db.QueryRow("SELECT nickname, role, balance FROM users WHERE tg_id=$1", uid).Scan(&nick, &role, &balance)
 
-    function updateBal() {
-        const s = document.getElementById('bank-select');
-        if (s && s.options.length > 0) {
-            const bal = parseFloat(s.options[s.selectedIndex].dataset.bal || 0);
-            document.getElementById('bal-val').innerText = bal.toFixed(2) + " GOLD";
-        }
-    }
+	rows, _ := db.Query("SELECT tg_id, nickname FROM users")
+	var uList []string
+	for rows.Next() {
+		var id, n string
+		rows.Scan(&id, &n)
+		uList = append(uList, id+":"+n)
+	}
+	rows.Close()
 
-    function showPage(id) {
-        const pages = ['main-menu','page-finance','page-bonds','page-apps','page-transfer','page-withdraw'];
-        pages.forEach(p => {
-            const el = document.getElementById(p);
-            if (el) el.classList.add('hidden');
-        });
-        const target = document.getElementById(id);
-        if (target) target.classList.remove('hidden');
-    }
+	accs, _ := json.Marshal([]map[string]interface{}{{"bank_id": 1, "bank_name": "Основной", "balance": balance}})
+	
+	bondRows, _ := db.Query(`SELECT id, name, amount, rate, created_at FROM bonds WHERE user_id = $1`, uid)
+	var bonds []Bond
+	for bondRows.Next() {
+		var bo Bond
+		var t time.Time
+		bondRows.Scan(&bo.ID, &bo.Name, &bo.Amount, &bo.Rate, &t)
+		bo.CurrentValue = calc(bo.Amount, bo.Rate, t)
+		bo.Date = t.Format("02.01.2006")
+		bonds = append(bonds, bo)
+	}
+	bondRows.Close()
+	bJ, _ := json.Marshal(bonds)
 
-    function doTransfer() {
-        const amt = parseFloat(document.getElementById('t-amount').value);
-        const target = document.getElementById('u-select').value;
-        if (!amt || !target) return alert("Заполните все поля");
-        sendAction('transfer', { amount: amt, target_id: target });
-    }
-
-    function sendWithdraw() {
-        const amt = parseFloat(document.getElementById('w-amount').value);
-        if (!amt) return alert("Введите сумму");
-        sendAction('bug_report', { message: `ЗАПРОС ВЫВОДА: ${amt} GOLD` });
-    }
-
-    function sendBond() {
-        const amt = parseFloat(document.getElementById('b-amount').value);
-        const type = document.getElementById('b-type').value;
-        if (!amt) return alert("Введите сумму");
-        sendAction('bond_request', { bond_name: type, amount: amt });
-    }
-
-    function sendBug() {
-        const msg = document.getElementById('bug-text').value;
-        if (!msg) return alert("Введите текст");
-        sendAction('bug_report', { message: msg });
-    }
-
-    load();
-</script>
-</body>
-</html>
+	v := url.Values{}
+	v.Set("nick", nick)
+	v.Set("role", role)
+	v.Set("accounts", string(accs))
+	v.Set("bonds", string(bJ))
+	v.Set("users", strings.Join(uList, ","))
+	
+	menu := &telebot.ReplyMarkup{ResizeKeyboard: true}
+	menu.Reply(menu.Row(menu.WebApp("🇸🇪 Кабинет", &telebot.WebApp{URL: WebAppURL + "?" + v.Encode()})))
+	return c.Send("🇸🇪 Меню загружено", menu)
+}
