@@ -81,6 +81,9 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         const params = new URLSearchParams(window.location.search);
+        
+        // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ RENDER (без / в конце)
+        const RENDER_URL = "https://sweden-bot.onrender.com"; 
 
         function showPage(page) {
             ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market'].forEach(p => {
@@ -122,6 +125,32 @@
             }
         }
 
+        // НОВАЯ ФУНКЦИЯ: АВТООБНОВЛЕНИЕ ДАННЫХ
+        async function refreshData() {
+            const uid = params.get('tg_id');
+            if (!uid) return;
+            try {
+                const response = await fetch(`${RENDER_URL}/api/get_user_data?uid=${uid}`);
+                const data = await response.json();
+                
+                // Обновляем баланс
+                document.getElementById('u-bal').innerText = data.balance.toFixed(2) + " GOLD";
+                
+                // Обновляем список облигаций
+                const bList = document.getElementById('bonds-list');
+                const bonds = data.bonds || [];
+                bList.innerHTML = bonds.length ? "" : "Нет вложений";
+                bonds.forEach(b => {
+                    const btn = b.can_withdraw 
+                        ? `<button class="withdraw-btn" onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
+                        : `<span class="lock-badge">🔒 Заблокировано</span>`;
+                    bList.innerHTML += `<div class="card"><b>${b.name}</b><br>На счету: ${b.current_value.toFixed(2)} GOLD<br>${btn}</div>`;
+                });
+            } catch (err) {
+                console.warn("Автообновление пока не доступно (бот спит или ошибка сети)");
+            }
+        }
+
         window.onload = () => {
             document.getElementById('loader').classList.add('hidden');
             const exists = params.get('exists') === 'true';
@@ -135,7 +164,7 @@
                 document.getElementById('u-bal').innerText = (params.get('bal') || "0.00") + " GOLD";
                 document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новостей нет");
 
-                // Юзеры
+                // Юзеры (оставляем как есть, так как список юзеров меняется редко)
                 try {
                     const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
                     const sel = document.getElementById('t-id');
@@ -147,7 +176,7 @@
                     });
                 } catch(e) {}
 
-                // Облигации
+                // Первичная отрисовка облигаций из параметров (твой код)
                 try {
                     const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
                     const bList = document.getElementById('bonds-list');
@@ -160,7 +189,7 @@
                     });
                 } catch(e) {}
 
-                // Магазин
+                // Магазин (твой код)
                 try {
                     const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
                     const mList = document.getElementById('market-list');
@@ -169,6 +198,9 @@
                         mList.innerHTML += `<div class="market-item"><b>${m.name}</b> (${m.rate}%)<br>Мин: ${m.price}<br><button onclick="buyBond(${m.id}, ${m.price})">Купить</button></div>`;
                     });
                 } catch(e) {}
+
+                // ЗАПУСК ТАЙМЕРА ОБНОВЛЕНИЯ (Раз в 7 секунд)
+                setInterval(refreshData, 7000);
             }
         };
     </script>
