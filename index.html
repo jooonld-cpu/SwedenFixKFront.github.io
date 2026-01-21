@@ -10,13 +10,16 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
         .info-bar { background: #b8860b33; padding: 12px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; border: 1px solid var(--gold); }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; font-size: 16px; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; font-size: 16px; font-family: inherit; }
+        textarea { min-height: 100px; resize: vertical; }
         button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; font-size: 16px; color: #000; cursor: pointer; margin-top: 5px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         .hidden { display: none !important; }
         .bond-item { border-bottom: 1px solid #444; padding: 10px 0; }
         .nav-btn { background: #333; color: white; margin-top: 10px; }
         .market-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
         .withdraw-btn { background: #28a745; color: white; margin-top: 10px; font-size: 14px; padding: 10px; }
+        .complaint-btn { background: #ff6b6b; color: white; margin-top: 5px; }
         .lock-badge { font-size: 11px; color: #ff4444; margin-top: 8px; display: block; }
         .sync-indicator { font-size: 11px; opacity: 0.6; text-align: center; margin-top: 10px; }
     </style>
@@ -46,6 +49,7 @@
         <button onclick="showPage('withdraw')">🏦 Снятие средств</button>
         <button onclick="showPage('bonds')" style="background: #daa520">📈 Мои Инвестиции</button>
         <button onclick="showPage('market')" style="background: #0055aa; color: white;">🛒 Магазин</button>
+        <button onclick="showPage('complaint')" class="complaint-btn" id="complaint-btn">📋 Жалоба</button>
         <button onclick="window.open('https://t.me/SwedenFix_News', '_blank')" style="background: #444; color: white; border: 1px solid var(--gold);">📚 Справочник</button>
         
         <div class="sync-indicator" id="sync-status">🔄 Синхронизация...</div>
@@ -79,6 +83,16 @@
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
+    <div id="complaint-screen" class="hidden">
+        <h3>Обратная связь</h3>
+        <p style="font-size: 14px; opacity: 0.8;">Опишите вашу проблему или жалобу. Администрация рассмотрит её в ближайшее время.</p>
+        <textarea id="complaint-text" placeholder="Опишите вашу жалобу или проблему..." maxlength="500"></textarea>
+        <div style="font-size: 12px; opacity: 0.6; text-align: right;" id="char-count">0/500</div>
+        <button onclick="action('complaint')" id="submit-complaint-btn">Отправить жалобу</button>
+        <div id="complaint-timer" style="font-size: 13px; color: #ff6b6b; text-align: center; margin-top: 10px;"></div>
+        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -88,9 +102,10 @@
         const RENDER_URL = "https://swedfixk.onrender.com";
         
         let syncInterval = null;
+        let canComplain = true;
 
         function showPage(page) {
-            ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market'].forEach(p => {
+            ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market', 'complaint'].forEach(p => {
                 const el = document.getElementById(p + '-screen');
                 if (el) el.classList.add('hidden');
             });
@@ -106,6 +121,7 @@
 
         function action(type) {
             const data = { action: type, nick: decodeURIComponent(params.get('nick') || "User") };
+            
             if(type === 'transfer') {
                 data.target_id = document.getElementById('t-id').value;
                 data.amount = parseFloat(document.getElementById('t-sum').value);
@@ -113,10 +129,16 @@
                     alert("Выберите получателя!");
                     return;
                 }
+                if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
             } else if(type === 'withdraw') {
                 data.amount = parseFloat(document.getElementById('w-sum').value);
+                if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
+            } else if(type === 'complaint') {
+                data.complaint = document.getElementById('complaint-text').value.trim();
+                if(!data.complaint) return alert("Напишите текст жалобы!");
+                if(!canComplain) return alert("Вы сможете отправить жалобу позже!");
             }
-            if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
+            
             tg.sendData(JSON.stringify(data));
         }
 
@@ -132,6 +154,17 @@
                 tg.sendData(JSON.stringify({action: 'sell_bond', bond_id: parseInt(id)}));
             }
         }
+
+        // Счётчик символов для жалобы
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.getElementById('complaint-text');
+            const counter = document.getElementById('char-count');
+            if(textarea && counter) {
+                textarea.addEventListener('input', function() {
+                    counter.innerText = `${this.value.length}/500`;
+                });
+            }
+        });
 
         // АВТООБНОВЛЕНИЕ ДАННЫХ
         async function refreshData() {
@@ -162,6 +195,22 @@
                         : `<span class="lock-badge">🔒 Заблокировано администрацией</span>`;
                     bList.innerHTML += `<div class="card"><b>${b.name}</b><br>💵 На счету: ${b.current_value.toFixed(2)} GOLD<br>📅 Дата: ${b.date}<br>${btn}</div>`;
                 });
+                
+                // Проверка возможности отправки жалобы
+                canComplain = data.can_complain;
+                const complaintBtn = document.getElementById('complaint-btn');
+                const submitBtn = document.getElementById('submit-complaint-btn');
+                const timerDiv = document.getElementById('complaint-timer');
+                
+                if(!canComplain) {
+                    if(complaintBtn) complaintBtn.disabled = true;
+                    if(submitBtn) submitBtn.disabled = true;
+                    if(timerDiv) timerDiv.innerText = "⏳ Подождите 12 часов перед следующей жалобой";
+                } else {
+                    if(complaintBtn) complaintBtn.disabled = false;
+                    if(submitBtn) submitBtn.disabled = false;
+                    if(timerDiv) timerDiv.innerText = "";
+                }
                 
                 // Обновляем индикатор синхронизации
                 const now = new Date();
@@ -235,7 +284,7 @@
                     refreshData();
                 }, 7000);
                 
-                // Обновление пользователей и магазина раз в 30 секунд (они меняются реже)
+                // Обновление пользователей и магазина раз в 30 секунд
                 setInterval(() => {
                     refreshUsers();
                     refreshMarket();
