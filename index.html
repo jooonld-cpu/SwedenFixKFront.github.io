@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweden Finance</title>
-    <script src="https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit?tab=t.0"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eee; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
@@ -14,79 +14,65 @@
         button { width: 100%; padding: 14px; background: var(--gold); border: none; border-radius: 8px; font-weight: bold; font-size: 16px; color: #000; cursor: pointer; margin-top: 5px; }
         .hidden { display: none !important; }
         .bond-item { border-bottom: 1px solid #444; padding: 10px 0; }
-        .bond-item:last-child { border: none; }
         .nav-btn { background: #333; color: white; margin-top: 10px; }
         .market-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
-        
-        /* Стиль для кнопки снятия */
         .withdraw-btn { background: #28a745; color: white; margin-top: 10px; font-size: 14px; padding: 10px; }
         .lock-badge { font-size: 11px; color: #ff4444; margin-top: 8px; display: block; }
-        
-        /* Стиль для кнопки справочника */
-        .manual-btn { background: #444 !important; color: white !important; margin-top: 5px; border: 1px solid var(--gold) !important; }
     </style>
 </head>
 <body>
-    <div id="loader" style="text-align: center; padding-top: 50px;">⏳ Подключение к реестру Швеции...</div>
+    <div id="loader" style="text-align: center; padding-top: 50px;">⏳ Подключение к реестру...</div>
 
     <div id="reg-screen" class="hidden">
         <h2 style="color: var(--gold)">Регистрация</h2>
-        <p>Для доступа к финансам создайте игровой профиль:</p>
         <input type="text" id="reg-nick" placeholder="Ваш никнейм">
         <input type="text" id="reg-role" placeholder="Ваша должность">
         <button onclick="register()">Создать аккаунт</button>
     </div>
 
     <div id="main-screen" class="hidden">
-        <div class="info-bar" id="info-text">Загрузка новостей...</div>
-        
+        <div class="info-bar" id="info-text">Загрузка...</div>
         <div style="margin-bottom: 20px;">
             <h2 id="u-nick" style="margin:0; color: var(--gold)">Никнейм</h2>
             <div id="u-role" style="opacity: 0.7; font-size: 14px;">Должность</div>
         </div>
-
         <div class="card">
-            <small style="text-transform: uppercase; color: var(--gold)">Ваш баланс</small>
-            <h1 id="u-bal" style="margin: 10px 0 0 0;">0.00 GOLD</h1>
+            <small>БАЛАНС</small>
+            <h1 id="u-bal">0.00 GOLD</h1>
         </div>
-
         <h3>Операции</h3>
         <button onclick="showPage('transfer')">💸 Перевод игроку</button>
         <button onclick="showPage('withdraw')">🏦 Снятие средств</button>
         <button onclick="showPage('bonds')" style="background: #daa520">📈 Мои Инвестиции</button>
-        <button onclick="showPage('market')" style="background: #0055aa; color: white;">🛒 Магазин облигаций</button>
-        
-        <button onclick="window.open('https://t.me/SwedenFix_News', '_blank')" class="manual-btn">📚 Справочник / Законы</button>
+        <button onclick="showPage('market')" style="background: #0055aa; color: white;">🛒 Магазин</button>
+        <button onclick="window.open('https://t.me/SwedenFix_News', '_blank')" style="background: #444; color: white; border: 1px solid var(--gold);">📚 Справочник</button>
         
         <button onclick="tg.close()" class="nav-btn">Закрыть</button>
     </div>
 
     <div id="transfer-screen" class="hidden">
         <h3>Перевод GOLD</h3>
-        <p style="font-size: 14px; opacity: 0.8;">Выберите получателя:</p>
-        <select id="t-id">
-            <option value="" disabled selected>Загрузка списка...</option>
-        </select>
-        <input type="number" id="t-sum" placeholder="Сумма перевода">
-        <button onclick="action('transfer')">Подтвердить перевод</button>
+        <select id="t-id"></select>
+        <input type="number" id="t-sum" placeholder="Сумма">
+        <button onclick="action('transfer')">Отправить</button>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
     <div id="withdraw-screen" class="hidden">
         <h3>Снятие средств</h3>
-        <input type="number" id="w-sum" placeholder="Сумма снятия">
-        <button onclick="action('withdraw')">Отправить запрос</button>
+        <input type="number" id="w-sum" placeholder="Сумма">
+        <button onclick="action('withdraw')">Запросить</button>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
     <div id="bonds-screen" class="hidden">
-        <h3>Инвестиционный портфель</h3>
-        <div id="bonds-list" class="card"></div>
+        <h3>Ваши инвестиции</h3>
+        <div id="bonds-list"></div>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
     <div id="market-screen" class="hidden">
-        <h3>Доступные облигации</h3>
+        <h3>Магазин облигаций</h3>
         <div id="market-list"></div>
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
@@ -97,49 +83,18 @@
         const params = new URLSearchParams(window.location.search);
 
         function showPage(page) {
-            document.getElementById('reg-screen').classList.add('hidden');
-            document.getElementById('main-screen').classList.add('hidden');
-            document.getElementById('transfer-screen').classList.add('hidden');
-            document.getElementById('withdraw-screen').classList.add('hidden');
-            document.getElementById('bonds-screen').classList.add('hidden');
-            document.getElementById('market-screen').classList.add('hidden');
-            
-            const target = document.getElementById(page + '-screen');
-            if(target) target.classList.remove('hidden');
+            ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market'].forEach(p => {
+                const el = document.getElementById(p + '-screen');
+                if (el) el.classList.add('hidden');
+            });
+            document.getElementById(page + '-screen').classList.remove('hidden');
         }
 
         function register() {
             const nick = document.getElementById('reg-nick').value;
             const role = document.getElementById('reg-role').value;
-            if(!nick || !role) return alert("Заполните все поля!");
+            if(!nick || !role) return alert("Заполните поля!");
             tg.sendData(JSON.stringify({action: 'register', nick, role}));
-        }
-
-        function buyBond(id, minAmount) {
-            const amount = parseFloat(prompt(`Введите сумму инвестиции (минимум ${minAmount} GOLD):`, minAmount));
-            if (isNaN(amount) || amount < minAmount) {
-                alert(`Минимальная сумма: ${minAmount} GOLD`);
-                return;
-            }
-            if(confirm(`Инвестировать ${amount} GOLD?`)) {
-                tg.sendData(JSON.stringify({
-                    action: 'buy_bond', 
-                    bond_id: parseInt(id),
-                    amount: amount,
-                    nick: decodeURIComponent(params.get('nick') || "User")
-                }));
-            }
-        }
-
-        function sellBond(id, val) {
-            if(confirm(`Закрыть инвестицию и получить ${val.toFixed(2)} GOLD на баланс?`)) {
-                tg.sendData(JSON.stringify({
-                    action: 'sell_bond',
-                    bond_id: parseInt(id),
-                    amount: parseFloat(val),
-                    nick: decodeURIComponent(params.get('nick') || "User")
-                }));
-            }
         }
 
         function action(type) {
@@ -147,78 +102,73 @@
             if(type === 'transfer') {
                 data.target_id = document.getElementById('t-id').value;
                 data.amount = parseFloat(document.getElementById('t-sum').value);
-                if (!data.target_id) return alert("Выберите получателя!");
             } else {
                 data.amount = parseFloat(document.getElementById('w-sum').value);
             }
-            if (!data.amount || data.amount <= 0) return alert("Введите сумму!");
+            if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
             tg.sendData(JSON.stringify(data));
         }
 
+        function buyBond(id, minPrice) {
+            const amount = parseFloat(prompt(`Сумма (мин ${minPrice}):`, minPrice));
+            if(amount >= minPrice) {
+                tg.sendData(JSON.stringify({action: 'buy_bond', bond_id: parseInt(id), amount: amount}));
+            }
+        }
+
+        function sellBond(id, val) {
+            if(confirm(`Забрать ${val.toFixed(2)} GOLD?`)) {
+                tg.sendData(JSON.stringify({action: 'sell_bond', bond_id: parseInt(id)}));
+            }
+        }
+
         window.onload = () => {
-            const exists = params.get('exists') === 'true';
             document.getElementById('loader').classList.add('hidden');
+            const exists = params.get('exists') === 'true';
             
-            if (!exists) { 
-                showPage('reg'); 
+            if (!exists) {
+                showPage('reg');
             } else {
                 showPage('main');
-                
-                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Ник");
-                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "Должность");
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "User");
+                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "");
                 document.getElementById('u-bal').innerText = (params.get('bal') || "0.00") + " GOLD";
-                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новости отсутствуют.");
+                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новостей нет");
 
+                // Юзеры
                 try {
                     const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
-                    const currentId = params.get('tg_id');
-                    const select = document.getElementById('t-id');
-                    select.innerHTML = '<option value="" disabled selected>Выберите гражданина</option>';
+                    const sel = document.getElementById('t-id');
+                    sel.innerHTML = '<option value="" disabled selected>Кому переводим?</option>';
                     users.forEach(u => {
-                        if (String(u.id) !== String(currentId)) {
-                            const opt = document.createElement('option');
-                            opt.value = u.id;
-                            opt.text = u.nick;
-                            select.appendChild(opt);
+                        if(u.id !== params.get('tg_id')) {
+                            sel.innerHTML += `<option value="${u.id}">${u.nick}</option>`;
                         }
                     });
-                } catch(e) { console.error("Users parse error"); }
+                } catch(e) {}
 
+                // Облигации
                 try {
                     const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
-                    const list = document.getElementById('bonds-list');
-                    list.innerHTML = bonds.length ? "" : "<small>Нет активных инвестиций.</small>";
+                    const bList = document.getElementById('bonds-list');
+                    bList.innerHTML = bonds.length ? "" : "Нет вложений";
                     bonds.forEach(b => {
-                        const actionHtml = b.can_withdraw 
+                        const btn = b.can_withdraw 
                             ? `<button class="withdraw-btn" onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
-                            : `<span class="lock-badge">🔒 Заблокировано правительством</span>`;
-
-                        list.innerHTML += `
-                            <div class="bond-item">
-                                <b style="color: var(--gold)">${b.name}</b><br>
-                                Вложено: ${b.amount.toFixed(2)} GOLD<br>
-                                Текущая ценность: <span style="color: #00ff00">+${b.current_value.toFixed(2)}</span><br>
-                                <small>Ставка: ${b.rate}% | ${b.date}</small>
-                                ${actionHtml}
-                            </div>`;
+                            : `<span class="lock-badge">🔒 Заблокировано</span>`;
+                        bList.innerHTML += `<div class="card"><b>${b.name}</b><br>На счету: ${b.current_value.toFixed(2)} GOLD<br>${btn}</div>`;
                     });
-                } catch(e) { console.error("Bonds parse error"); }
+                } catch(e) {}
 
+                // Магазин
                 try {
                     const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
                     const mList = document.getElementById('market-list');
-                    mList.innerHTML = market.length ? "" : "<div class='card'>Рынок пуст.</div>";
+                    mList.innerHTML = "";
                     market.forEach(m => {
-                        mList.innerHTML += `
-                            <div class="market-item">
-                                <b style="color: var(--gold)">${m.name}</b><br>
-                                Мин. вклад: ${m.price} GOLD<br>
-                                Доход: ${m.rate}% в день<br>
-                                Заморозка: ${m.min_days} дн.<br>
-                                <button onclick="buyBond('${m.id}', ${m.price})">Инвестировать</button>
-                            </div>`;
+                        mList.innerHTML += `<div class="market-item"><b>${m.name}</b> (${m.rate}%)<br>Мин: ${m.price}<br><button onclick="buyBond(${m.id}, ${m.price})">Купить</button></div>`;
                     });
-                } catch(e) { console.error("Market parse error"); }
+                } catch(e) {}
             }
         };
     </script>
