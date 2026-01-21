@@ -17,6 +17,10 @@
         .bond-item:last-child { border: none; }
         .nav-btn { background: #333; color: white; margin-top: 10px; }
         .market-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
+        
+        /* Стиль для кнопки снятия */
+        .withdraw-btn { background: #28a745; color: white; margin-top: 10px; font-size: 14px; padding: 10px; }
+        .lock-badge { font-size: 11px; color: #ff4444; margin-top: 8px; display: block; }
     </style>
 </head>
 <body>
@@ -88,7 +92,6 @@
         const params = new URLSearchParams(window.location.search);
 
         function showPage(page) {
-            // Исправленная логика переключения экранов
             document.getElementById('reg-screen').classList.add('hidden');
             document.getElementById('main-screen').classList.add('hidden');
             document.getElementById('transfer-screen').classList.add('hidden');
@@ -123,6 +126,18 @@
             }
         }
 
+        // НОВАЯ ФУНКЦИЯ: Снятие средств с конкретной облигации
+        function sellBond(id, val) {
+            if(confirm(`Закрыть инвестицию и получить ${val.toFixed(2)} GOLD на баланс?`)) {
+                tg.sendData(JSON.stringify({
+                    action: 'sell_bond',
+                    bond_id: parseInt(id),
+                    amount: parseFloat(val),
+                    nick: decodeURIComponent(params.get('nick') || "User")
+                }));
+            }
+        }
+
         function action(type) {
             const data = { action: type, nick: decodeURIComponent(params.get('nick') || "User") };
             if(type === 'transfer') {
@@ -145,7 +160,6 @@
             } else {
                 showPage('main');
                 
-                // Рендер основных данных
                 document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "Ник");
                 document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "Должность");
                 document.getElementById('u-bal').innerText = (params.get('bal') || "0.00") + " GOLD";
@@ -167,18 +181,24 @@
                     });
                 } catch(e) { console.error("Users parse error"); }
 
-                // Рендер портфеля
+                // Рендер портфеля (ОБНОВЛЕНО: добавлена проверка can_withdraw)
                 try {
                     const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
                     const list = document.getElementById('bonds-list');
                     list.innerHTML = bonds.length ? "" : "<small>Нет активных инвестиций.</small>";
                     bonds.forEach(b => {
+                        // Если can_withdraw == true, показываем кнопку, иначе текст о заморозке
+                        const actionHtml = b.can_withdraw 
+                            ? `<button class="withdraw-btn" onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
+                            : `<span class="lock-badge">🔒 Заблокировано правительством</span>`;
+
                         list.innerHTML += `
                             <div class="bond-item">
                                 <b style="color: var(--gold)">${b.name}</b><br>
                                 Вложено: ${b.amount.toFixed(2)} GOLD<br>
                                 Текущая ценность: <span style="color: #00ff00">+${b.current_value.toFixed(2)}</span><br>
                                 <small>Ставка: ${b.rate}% | ${b.date}</small>
+                                ${actionHtml}
                             </div>`;
                     });
                 } catch(e) { console.error("Bonds parse error"); }
