@@ -18,6 +18,7 @@
         .market-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
         .withdraw-btn { background: #28a745; color: white; margin-top: 10px; font-size: 14px; padding: 10px; }
         .lock-badge { font-size: 11px; color: #ff4444; margin-top: 8px; display: block; }
+        .sync-indicator { font-size: 11px; opacity: 0.6; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -47,6 +48,7 @@
         <button onclick="showPage('market')" style="background: #0055aa; color: white;">🛒 Магазин</button>
         <button onclick="window.open('https://t.me/SwedenFix_News', '_blank')" style="background: #444; color: white; border: 1px solid var(--gold);">📚 Справочник</button>
         
+        <div class="sync-indicator" id="sync-status">🔄 Синхронизация...</div>
         <button onclick="tg.close()" class="nav-btn">Закрыть</button>
     </div>
 
@@ -82,8 +84,10 @@
         tg.expand();
         const params = new URLSearchParams(window.location.search);
         
-        // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ RENDER (без / в конце)
-        const RENDER_URL = "https://swedfixk.onrender.com"; 
+        // УКАЖИ СВОЙ RENDER URL
+        const RENDER_URL = "https://swedfixk.onrender.com";
+        
+        let syncInterval = null;
 
         function showPage(page) {
             ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market'].forEach(p => {
@@ -105,7 +109,11 @@
             if(type === 'transfer') {
                 data.target_id = document.getElementById('t-id').value;
                 data.amount = parseFloat(document.getElementById('t-sum').value);
-            } else {
+                if(!data.target_id) {
+                    alert("Выберите получателя!");
+                    return;
+                }
+            } else if(type === 'withdraw') {
                 data.amount = parseFloat(document.getElementById('w-sum').value);
             }
             if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
@@ -125,29 +133,83 @@
             }
         }
 
-        // НОВАЯ ФУНКЦИЯ: АВТООБНОВЛЕНИЕ ДАННЫХ
+        // АВТООБНОВЛЕНИЕ ДАННЫХ
         async function refreshData() {
             const uid = params.get('tg_id');
             if (!uid) return;
+            
             try {
                 const response = await fetch(`${RENDER_URL}/api/get_user_data?uid=${uid}`);
+                if (!response.ok) throw new Error('Network error');
+                
                 const data = await response.json();
                 
                 // Обновляем баланс
                 document.getElementById('u-bal').innerText = data.balance.toFixed(2) + " GOLD";
                 
+                // Обновляем информационную строку
+                if (data.info) {
+                    document.getElementById('info-text').innerText = data.info;
+                }
+                
                 // Обновляем список облигаций
                 const bList = document.getElementById('bonds-list');
                 const bonds = data.bonds || [];
-                bList.innerHTML = bonds.length ? "" : "Нет вложений";
+                bList.innerHTML = bonds.length ? "" : "<p style='text-align:center; opacity:0.5;'>Нет вложений</p>";
                 bonds.forEach(b => {
                     const btn = b.can_withdraw 
-                        ? `<button class="withdraw-btn" onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
-                        : `<span class="lock-badge">🔒 Заблокировано</span>`;
-                    bList.innerHTML += `<div class="card"><b>${b.name}</b><br>На счету: ${b.current_value.toFixed(2)} GOLD<br>${btn}</div>`;
+                        ? `<button class="withdraw-btn" onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)} GOLD</button>`
+                        : `<span class="lock-badge">🔒 Заблокировано администрацией</span>`;
+                    bList.innerHTML += `<div class="card"><b>${b.name}</b><br>💵 На счету: ${b.current_value.toFixed(2)} GOLD<br>📅 Дата: ${b.date}<br>${btn}</div>`;
+                });
+                
+                // Обновляем индикатор синхронизации
+                const now = new Date();
+                document.getElementById('sync-status').innerText = `✅ Обновлено ${now.toLocaleTimeString('ru-RU')}`;
+                
+            } catch (err) {
+                console.warn("Ошибка синхронизации:", err);
+                document.getElementById('sync-status').innerText = `⚠️ Ошибка синхронизации`;
+            }
+        }
+
+        // ОБНОВЛЕНИЕ СПИСКА ПОЛЬЗОВАТЕЛЕЙ
+        async function refreshUsers() {
+            try {
+                const response = await fetch(`${RENDER_URL}/api/get_users`);
+                if (!response.ok) return;
+                
+                const users = await response.json();
+                const sel = document.getElementById('t-id');
+                const currentValue = sel.value;
+                
+                sel.innerHTML = '<option value="" disabled selected>Кому переводим?</option>';
+                users.forEach(u => {
+                    if(u.id !== params.get('tg_id')) {
+                        sel.innerHTML += `<option value="${u.id}">${u.nick}</option>`;
+                    }
+                });
+                
+                if (currentValue) sel.value = currentValue;
+            } catch (err) {
+                console.warn("Ошибка загрузки пользователей:", err);
+            }
+        }
+
+        // ОБНОВЛЕНИЕ МАГАЗИНА
+        async function refreshMarket() {
+            try {
+                const response = await fetch(`${RENDER_URL}/api/get_market`);
+                if (!response.ok) return;
+                
+                const market = await response.json();
+                const mList = document.getElementById('market-list');
+                mList.innerHTML = market.length ? "" : "<p style='text-align:center; opacity:0.5;'>Магазин пуст</p>";
+                market.forEach(m => {
+                    mList.innerHTML += `<div class="market-item"><b>${m.name}</b><br>📊 Доходность: ${m.rate}%<br>💰 Мин. сумма: ${m.price} GOLD<br><button onclick="buyBond(${m.id}, ${m.price})">Купить</button></div>`;
                 });
             } catch (err) {
-                console.warn("Автообновление пока не доступно (бот спит или ошибка сети)");
+                console.warn("Ошибка загрузки магазина:", err);
             }
         }
 
@@ -162,46 +224,28 @@
                 document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "User");
                 document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "");
                 document.getElementById('u-bal').innerText = (params.get('bal') || "0.00") + " GOLD";
-                document.getElementById('info-text').innerText = decodeURIComponent(params.get('info') || "Новостей нет");
 
-                // Юзеры (оставляем как есть, так как список юзеров меняется редко)
-                try {
-                    const users = JSON.parse(decodeURIComponent(params.get('users') || "[]"));
-                    const sel = document.getElementById('t-id');
-                    sel.innerHTML = '<option value="" disabled selected>Кому переводим?</option>';
-                    users.forEach(u => {
-                        if(u.id !== params.get('tg_id')) {
-                            sel.innerHTML += `<option value="${u.id}">${u.nick}</option>`;
-                        }
-                    });
-                } catch(e) {}
+                // Первичная загрузка данных
+                refreshData();
+                refreshUsers();
+                refreshMarket();
 
-                // Первичная отрисовка облигаций из параметров (твой код)
-                try {
-                    const bonds = JSON.parse(decodeURIComponent(params.get('bonds') || "[]"));
-                    const bList = document.getElementById('bonds-list');
-                    bList.innerHTML = bonds.length ? "" : "Нет вложений";
-                    bonds.forEach(b => {
-                        const btn = b.can_withdraw 
-                            ? `<button class="withdraw-btn" onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
-                            : `<span class="lock-badge">🔒 Заблокировано</span>`;
-                        bList.innerHTML += `<div class="card"><b>${b.name}</b><br>На счету: ${b.current_value.toFixed(2)} GOLD<br>${btn}</div>`;
-                    });
-                } catch(e) {}
-
-                // Магазин (твой код)
-                try {
-                    const market = JSON.parse(decodeURIComponent(params.get('market') || "[]"));
-                    const mList = document.getElementById('market-list');
-                    mList.innerHTML = "";
-                    market.forEach(m => {
-                        mList.innerHTML += `<div class="market-item"><b>${m.name}</b> (${m.rate}%)<br>Мин: ${m.price}<br><button onclick="buyBond(${m.id}, ${m.price})">Купить</button></div>`;
-                    });
-                } catch(e) {}
-
-                // ЗАПУСК ТАЙМЕРА ОБНОВЛЕНИЯ (Раз в 7 секунд)
-                setInterval(refreshData, 7000);
+                // ЗАПУСК АВТООБНОВЛЕНИЯ КАЖДЫЕ 7 СЕКУНД
+                syncInterval = setInterval(() => {
+                    refreshData();
+                }, 7000);
+                
+                // Обновление пользователей и магазина раз в 30 секунд (они меняются реже)
+                setInterval(() => {
+                    refreshUsers();
+                    refreshMarket();
+                }, 30000);
             }
+        };
+        
+        // Остановка синхронизации при закрытии
+        window.onbeforeunload = () => {
+            if (syncInterval) clearInterval(syncInterval);
         };
     </script>
 </body>
