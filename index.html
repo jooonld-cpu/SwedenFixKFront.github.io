@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ffd700; --bg: #1a1a1a; --card: #2d2d2d; --text: #eee; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; padding-bottom: 80px; }
         .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 4px solid var(--gold); }
         .info-bar { background: #b8860b33; padding: 12px; font-size: 13px; border-radius: 8px; margin-bottom: 20px; color: var(--gold); text-align: center; border: 1px solid var(--gold); }
         input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; box-sizing: border-box; font-size: 16px; font-family: inherit; }
@@ -19,9 +19,13 @@
         .nav-btn { background: #333; color: white; margin-top: 10px; }
         .market-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
         .withdraw-btn { background: #28a745; color: white; margin-top: 10px; font-size: 14px; padding: 10px; }
+        .deposit-btn { background: #17a2b8; color: white; margin-top: 5px; }
         .complaint-btn { background: #ff6b6b; color: white; margin-top: 5px; }
         .lock-badge { font-size: 11px; color: #ff4444; margin-top: 8px; display: block; }
         .sync-indicator { font-size: 11px; opacity: 0.6; text-align: center; margin-top: 10px; }
+        .social-links { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a1a; border-top: 2px solid var(--gold); padding: 12px 15px; display: flex; justify-content: center; gap: 20px; z-index: 1000; }
+        .social-links a { color: var(--gold); font-size: 24px; text-decoration: none; transition: transform 0.2s; }
+        .social-links a:hover { transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -45,6 +49,7 @@
             <h1 id="u-bal">0.00 GOLD</h1>
         </div>
         <h3>Операции</h3>
+        <button onclick="showPage('deposit')" class="deposit-btn">💳 Пополнить баланс</button>
         <button onclick="showPage('transfer')">💸 Перевод игроку</button>
         <button onclick="showPage('withdraw')">🏦 Снятие средств</button>
         <button onclick="showPage('bonds')" style="background: #daa520">📈 Мои Инвестиции</button>
@@ -54,6 +59,21 @@
         
         <div class="sync-indicator" id="sync-status">🔄 Синхронизация...</div>
         <button onclick="tg.close()" class="nav-btn">Закрыть</button>
+    </div>
+
+    <div id="deposit-screen" class="hidden">
+        <h3>Пополнение баланса</h3>
+        <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #ff6b6b;">
+            <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                ⚠️ <strong>ВАЖНО!</strong><br><br>
+                Вы должны пополнить казну нации на сумму, которую хотите положить на свой счёт.<br><br>
+                📸 После пополнения сделайте скриншот и отправьте его в Telegram: <strong>@Kolorli21</strong><br><br>
+                💰 Вводите сумму правильно!
+            </p>
+        </div>
+        <input type="number" id="d-sum" placeholder="Сумма пополнения" min="1" step="0.01">
+        <button onclick="requestDeposit()">Отправить запрос</button>
+        <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
     <div id="transfer-screen" class="hidden">
@@ -93,6 +113,25 @@
         <button onclick="showPage('main')" class="nav-btn">Назад</button>
     </div>
 
+    <!-- Социальные ссылки -->
+    <div class="social-links">
+        <a href="https://discord.gg/your-discord" target="_blank" title="Discord">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+            </svg>
+        </a>
+        <a href="https://t.me/your-channel" target="_blank" title="Telegram">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+            </svg>
+        </a>
+        <a href="https://youtube.com/@your-channel" target="_blank" title="YouTube">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+        </a>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
@@ -105,7 +144,7 @@
         let canComplain = true;
 
         function showPage(page) {
-            ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market', 'complaint'].forEach(p => {
+            ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market', 'complaint', 'deposit'].forEach(p => {
                 const el = document.getElementById(p + '-screen');
                 if (el) el.classList.add('hidden');
             });
@@ -117,6 +156,23 @@
             const role = document.getElementById('reg-role').value;
             if(!nick || !role) return alert("Заполните поля!");
             tg.sendData(JSON.stringify({action: 'register', nick, role}));
+        }
+
+        function requestDeposit() {
+            const amount = parseFloat(document.getElementById('d-sum').value);
+            if(!amount || amount <= 0) {
+                alert("Введите корректную сумму!");
+                return;
+            }
+            
+            const confirmed = confirm(`Подтверждаете запрос на пополнение ${amount.toFixed(2)} GOLD?\n\nНе забудьте отправить скриншот пополнения казны в @Kolorli21!`);
+            if(confirmed) {
+                tg.sendData(JSON.stringify({
+                    action: 'deposit_request',
+                    amount: amount,
+                    nick: decodeURIComponent(params.get('nick') || "User")
+                }));
+            }
         }
 
         function action(type) {
