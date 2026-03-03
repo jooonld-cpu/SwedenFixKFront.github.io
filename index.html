@@ -5,109 +5,445 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sweden Finance</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { 
-            --gold: #ffd700; 
+        :root {
+            --gold: #ffd700;
             --gold-dark: #b8860b;
-            --bg: #0f0f0f; 
-            --card: rgba(45, 45, 45, 0.7); 
-            --text: #ffffff;
+            --gold-dim: rgba(255,215,0,0.15);
+            --bg: #0a0a0f;
+            --card: rgba(20,20,30,0.85);
+            --text: #e8e0d0;
             --accent: #0055aa;
+            --red: #c0392b;
+            --green: #27ae60;
         }
 
-        body { 
-            font-family: 'SF Pro Display', 'Segoe UI', Roboto, sans-serif; 
-            background: radial-gradient(circle at top, #1a1a1a 0%, var(--bg) 100%);
-            color: var(--text); 
-            padding: 20px; 
-            margin: 0; 
-            padding-bottom: 100px;
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 110px;
             overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        /* --- Анимации --- */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulseLogo { 0% { filter: drop-shadow(0 0 5px var(--gold)); } 50% { filter: drop-shadow(0 0 20px var(--gold)); } 100% { filter: drop-shadow(0 0 5px var(--gold)); } }
-        @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-
-        /* --- Логотип --- */
-        .header-section { text-align: center; margin-bottom: 25px; animation: fadeIn 0.8s ease-out; }
-        .logo-container { width: 100px; height: 100px; margin: 0 auto 15px; position: relative; }
-        .main-logo { width: 100%; height: 100%; object-fit: contain; animation: pulseLogo 3s infinite ease-in-out; }
-
-        /* --- Элементы интерфейса --- */
-        .card { 
-            background: var(--card); 
-            backdrop-filter: blur(10px);
-            padding: 18px; 
-            border-radius: 16px; 
-            margin-bottom: 15px; 
-            border: 1px solid rgba(255, 215, 0, 0.15);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            animation: fadeIn 0.5s ease-out;
+        /* Background texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(255,215,0,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(0,85,170,0.06) 0%, transparent 60%),
+                repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,215,0,0.01) 40px, rgba(255,215,0,0.01) 41px);
+            pointer-events: none;
+            z-index: 0;
         }
 
-        .info-bar { 
-            background: rgba(184, 134, 11, 0.15); 
-            padding: 12px; 
-            font-size: 13px; 
-            border-radius: 10px; 
-            margin-bottom: 20px; 
-            color: var(--gold); 
-            text-align: center; 
-            border: 1px solid var(--gold);
+        * { position: relative; z-index: 1; }
+
+        /* Animations */
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulseLogo { 0%,100% { filter: drop-shadow(0 0 8px var(--gold)); } 50% { filter: drop-shadow(0 0 28px var(--gold)) drop-shadow(0 0 50px rgba(255,215,0,0.3)); } }
+        @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes reelSpin { 0% { transform: translateY(0); } 100% { transform: translateY(-300%); } }
+        @keyframes winPulse { 0%,100% { box-shadow: 0 0 20px rgba(255,215,0,0.3); } 50% { box-shadow: 0 0 50px rgba(255,215,0,0.8), 0 0 80px rgba(255,215,0,0.4); } }
+        @keyframes coinFlip { 0% { transform: rotateY(0); } 50% { transform: rotateY(900deg) scale(1.2); } 100% { transform: rotateY(1800deg); } }
+        @keyframes diceRoll { 0% { transform: rotate(0); } 25% { transform: rotate(90deg) scale(1.1); } 50% { transform: rotate(180deg); } 75% { transform: rotate(270deg) scale(0.9); } 100% { transform: rotate(360deg); } }
+        @keyframes resultAppear { 0% { transform: scale(0.5); opacity:0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity:1; } }
+        @keyframes tickerMove { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+
+        /* Typography */
+        h1, h2, h3 { font-family: 'Cinzel', serif; color: var(--gold); margin: 5px 0; letter-spacing: 1px; }
+
+        /* Header */
+        .header-section { text-align: center; margin-bottom: 25px; animation: fadeUp 0.8s ease-out; }
+        .logo-container { width: 90px; height: 90px; margin: 0 auto 12px; }
+        .main-logo { width: 100%; height: 100%; object-fit: contain; animation: pulseLogo 3s infinite; }
+
+        /* Info ticker */
+        .info-bar {
+            background: rgba(184,134,11,0.1);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 13px;
+            color: var(--gold);
+            text-align: center;
             position: relative;
             overflow: hidden;
+            margin-bottom: 18px;
         }
-
         .info-bar::after {
-            content: ""; position: absolute; top: 0; left: 0; width: 50%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.2), transparent);
-            animation: slide 3s infinite;
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 40%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,215,0,0.12), transparent);
+            animation: shimmer 3s infinite;
         }
 
-        h1, h2, h3 { color: var(--gold); margin: 5px 0; }
-        .balance-card h1 { font-size: 32px; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(255,215,0,0.3); }
-
-        input, select, textarea { 
-            width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; 
-            border: 1px solid #333; background: rgba(0,0,0,0.4); color: #fff; 
-            box-sizing: border-box; font-size: 16px;
+        /* Cards */
+        .card {
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            padding: 18px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255,215,0,0.12);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            animation: fadeUp 0.5s ease-out;
         }
 
-        button { 
-            width: 100%; padding: 16px; background: linear-gradient(135deg, var(--gold), #b8860b); 
-            border: none; border-radius: 12px; font-weight: bold; font-size: 16px; 
-            color: #000; cursor: pointer; margin-top: 8px; transition: 0.2s;
-        }
+        .balance-card h1 { font-size: 28px; text-shadow: 0 2px 12px rgba(255,215,0,0.4); }
 
+        /* Buttons */
+        input, select, textarea {
+            width: 100%; padding: 13px; margin: 8px 0;
+            border-radius: 10px; border: 1px solid rgba(255,215,0,0.2);
+            background: rgba(0,0,0,0.5); color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px; font-weight: 600;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); }
+
+        button {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            border: none; border-radius: 12px;
+            font-family: 'Cinzel', serif;
+            font-weight: 700; font-size: 14px;
+            color: #000; cursor: pointer;
+            margin-top: 8px; transition: all 0.2s;
+            letter-spacing: 0.5px;
+        }
         button:active { transform: scale(0.97); }
-        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 
-        .deposit-btn { background: linear-gradient(135deg, #17a2b8, #0b7a8b); color: white; }
-        .complaint-btn { background: linear-gradient(135deg, #ff6b6b, #c0392b); color: white; }
-        .nav-btn { background: #333; color: white; margin-top: 15px; }
-        
-        .market-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #444; }
-        .lock-badge { color: #ff4444; font-size: 12px; display: block; margin-top: 10px; font-weight: bold; }
-        .sync-indicator { font-size: 11px; opacity: 0.5; text-align: center; margin-top: 15px; }
+        .btn-deposit { background: linear-gradient(135deg, #17a2b8, #0b6e7d); color: white; }
+        .btn-complaint { background: linear-gradient(135deg, #e74c3c, #922b21); color: white; }
+        .btn-nav { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-casino { background: linear-gradient(135deg, #8b0000, #cc0000, #ff4444); color: white; font-family: 'Cinzel', serif; }
+        .btn-market { background: linear-gradient(135deg, #003580, #0055aa); color: white; }
+
+        /* Section label */
+        .section-label {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: rgba(255,215,0,0.5);
+            text-transform: uppercase;
+            margin: 20px 0 10px;
+        }
+
+        /* Market item */
+        .market-item {
+            background: rgba(255,255,255,0.04);
+            padding: 14px; border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .lock-badge { color: #ff4444; font-size: 12px; display: block; margin-top: 8px; font-weight: bold; }
+        .sync-indicator { font-size: 11px; opacity: 0.4; text-align: center; margin-top: 12px; }
 
         .hidden { display: none !important; }
 
-        /* Соцсети */
-        .social-links { 
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: rgba(15, 15, 15, 0.95); backdrop-filter: blur(15px);
-            border-top: 1px solid rgba(255, 215, 0, 0.3); 
-            padding: 15px; display: flex; justify-content: center; gap: 25px; z-index: 1000; 
+        /* ─── КАЗИНО ─── */
+        .casino-header {
+            text-align: center;
+            padding: 20px 0 10px;
+            animation: fadeUp 0.6s ease-out;
         }
+
+        .casino-header h2 {
+            font-size: 26px;
+            background: linear-gradient(135deg, #ff6b6b, var(--gold), #ff6b6b);
+            background-size: 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s infinite linear;
+        }
+
+        .casino-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .casino-tab {
+            flex: 1;
+            padding: 12px 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,215,0,0.2);
+            background: rgba(0,0,0,0.4);
+            color: rgba(255,215,0,0.5);
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .casino-tab.active {
+            background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(184,134,11,0.15));
+            border-color: var(--gold);
+            color: var(--gold);
+            box-shadow: 0 0 15px rgba(255,215,0,0.2);
+        }
+
+        .casino-game { display: none; animation: fadeUp 0.4s ease-out; }
+        .casino-game.active { display: block; }
+
+        /* СЛОТЫ */
+        .slots-machine {
+            background: linear-gradient(135deg, #1a0a00, #2d1500);
+            border: 2px solid var(--gold-dark);
+            border-radius: 20px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 0 30px rgba(255,100,0,0.1);
+            margin-bottom: 16px;
+        }
+
+        .slots-reels {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .reel {
+            width: 75px; height: 75px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 12px;
+            border: 2px solid rgba(255,215,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .reel.spinning {
+            animation: reelSpin 0.15s linear infinite;
+            border-color: var(--gold);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 0 15px rgba(255,215,0,0.3);
+        }
+
+        .reel.win {
+            animation: winPulse 0.8s ease-in-out 3;
+            border-color: var(--gold);
+        }
+
+        .slots-divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);
+            margin: 15px 0;
+        }
+
+        /* МОНЕТКА */
+        .coinflip-area {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .big-coin {
+            width: 110px; height: 110px;
+            margin: 0 auto 25px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ffe066, #b8860b, #5c3d02);
+            border: 4px solid var(--gold-dark);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 50px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
+            transition: all 0.3s;
+            cursor: default;
+        }
+
+        .big-coin.flipping {
+            animation: coinFlip 1.2s ease-in-out;
+        }
+
+        .coin-choices {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .coin-choice {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,215,0,0.2);
+            background: rgba(0,0,0,0.4);
+            color: var(--text);
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .coin-choice.selected {
+            border-color: var(--gold);
+            background: rgba(255,215,0,0.12);
+            color: var(--gold);
+            box-shadow: 0 0 15px rgba(255,215,0,0.2);
+        }
+
+        /* КОСТИ */
+        .dice-area {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .big-dice {
+            width: 100px; height: 100px;
+            margin: 0 auto 25px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 3px solid rgba(255,215,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 52px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.05);
+        }
+
+        .big-dice.rolling {
+            animation: diceRoll 0.8s ease-in-out;
+        }
+
+        .dice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .dice-btn {
+            padding: 14px 8px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,215,0,0.2);
+            background: rgba(0,0,0,0.4);
+            color: var(--text);
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .dice-btn.selected {
+            border-color: var(--gold);
+            background: rgba(255,215,0,0.12);
+            box-shadow: 0 0 15px rgba(255,215,0,0.2);
+        }
+
+        /* Casino result */
+        .casino-result {
+            background: rgba(0,0,0,0.5);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+            border: 1px solid rgba(255,215,0,0.15);
+            animation: resultAppear 0.5s ease-out;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .result-win {
+            border-color: var(--gold);
+            background: rgba(255,215,0,0.05);
+            box-shadow: 0 0 30px rgba(255,215,0,0.15);
+        }
+
+        .result-loss {
+            border-color: rgba(200,50,50,0.4);
+            background: rgba(200,50,50,0.04);
+        }
+
+        .result-text { font-size: 15px; font-weight: 600; line-height: 1.6; }
+        .result-win .result-text { color: var(--gold); }
+        .result-loss .result-text { color: #ff7070; }
+
+        .bet-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .bet-input-row input { margin: 0; flex: 1; }
+
+        .quick-bets {
+            display: flex;
+            gap: 6px;
+            margin: 6px 0 12px;
+        }
+
+        .quick-bet {
+            flex: 1;
+            padding: 8px 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,215,0,0.2);
+            background: rgba(0,0,0,0.4);
+            color: rgba(255,215,0,0.7);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .quick-bet:hover { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,0.08); }
+
+        /* Stats bar */
+        .casino-stats {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+        }
+
+        .stat-box .stat-val { font-family: 'Cinzel', serif; font-size: 14px; color: var(--gold); }
+        .stat-box .stat-lbl { font-size: 10px; opacity: 0.5; letter-spacing: 1px; }
+
+        /* Social nav */
+        .social-links {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(8,8,12,0.97);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,215,0,0.2);
+            padding: 12px 20px;
+            display: flex; justify-content: center; gap: 25px;
+            z-index: 1000;
+        }
+
         .social-links a { color: var(--gold); transition: 0.3s; }
-        .social-links a:hover { transform: translateY(-3px); }
+        .social-links a:hover { transform: translateY(-3px); filter: drop-shadow(0 0 8px var(--gold)); }
     </style>
 </head>
 <body>
-    <div id="loader" style="text-align: center; padding-top: 50px; color: var(--gold);">⏳ Подключение к реестру...</div>
+    <div id="loader" style="text-align:center;padding-top:60px;color:var(--gold);font-family:'Cinzel',serif;">⏳ Подключение...</div>
 
+    <!-- РЕГИСТРАЦИЯ -->
     <div id="reg-screen" class="hidden">
         <div class="header-section">
             <div class="logo-container">
@@ -122,47 +458,57 @@
         </div>
     </div>
 
+    <!-- ГЛАВНАЯ -->
     <div id="main-screen" class="hidden">
         <div class="header-section">
             <div class="logo-container">
                 <img src="logo.png" alt="Logo" class="main-logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2610/2610116.png'">
             </div>
             <div class="info-bar" id="info-text">Синхронизация...</div>
-            <h2 id="u-nick" style="margin:0;">Никнейм</h2>
-            <div id="u-role" style="opacity: 0.6; font-size: 14px;">Должность</div>
+            <h2 id="u-nick">Никнейм</h2>
+            <div id="u-role" style="opacity:0.55;font-size:14px;letter-spacing:1px;"></div>
         </div>
 
         <div class="card balance-card">
-            <small style="color: var(--gold); font-weight: bold; opacity: 0.8;">ВАШ БАЛАНС</small>
+            <small style="color:var(--gold);font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;opacity:0.7;">ВАШ БАЛАНС</small>
             <h1 id="u-bal">0.00 GOLD</h1>
         </div>
 
-        <h3>Операции</h3>
-        <button onclick="showPage('deposit')" class="deposit-btn">💳 Пополнить баланс</button>
+        <div class="section-label">Операции</div>
+        <button onclick="showPage('deposit')" class="btn-deposit">💳 Пополнить баланс</button>
         <button onclick="showPage('transfer')">💸 Перевод игроку</button>
         <button onclick="showPage('withdraw')">🏦 Снятие средств</button>
-        <button onclick="showPage('bonds')" style="background: #daa520; color: #000;">📈 Мои Инвестиции</button>
-        <button onclick="showPage('market')" style="background: var(--accent); color: white;">🛒 Магазин</button>
-        <button onclick="showPage('complaint')" class="complaint-btn" id="complaint-btn">📋 Жалоба</button>
-        <button onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit?tab=t.0', '_blank')" style="background: #444; color: white; border: 1px solid var(--gold);">📚 Справочник</button>
-        
+
+        <div class="section-label">Инвестиции</div>
+        <button onclick="showPage('bonds')" style="background:linear-gradient(135deg,#7d5a00,#daa520);color:#000;">📈 Мои Инвестиции</button>
+        <button onclick="showPage('market')" class="btn-market">🛒 Магазин облигаций</button>
+
+        <div class="section-label">Развлечения</div>
+        <button onclick="showPage('casino')" class="btn-casino">🎰 Казино</button>
+
+        <div class="section-label">Прочее</div>
+        <button onclick="showPage('complaint')" class="btn-complaint" id="complaint-btn">📋 Жалоба / Обратная связь</button>
+        <button onclick="window.open('https://docs.google.com/document/d/1CtUNPBjuuo-twrqvRVmm0YhRizTwmP5xTh8G9xNwmzU/edit?tab=t.0','_blank')" style="background:rgba(255,255,255,0.07);color:var(--text);border:1px solid rgba(255,215,0,0.2);">📚 Справочник</button>
+
         <div class="sync-indicator" id="sync-status">🔄 Синхронизация...</div>
-        <button onclick="tg.close()" class="nav-btn">Закрыть приложение</button>
+        <button onclick="tg.close()" class="btn-nav" style="margin-top:15px;">Закрыть приложение</button>
     </div>
 
+    <!-- ПОПОЛНЕНИЕ -->
     <div id="deposit-screen" class="hidden">
-        <h3>Пополнение</h3>
-        <div class="card" style="border-left: 4px solid #ff6b6b; background: rgba(255, 107, 107, 0.05);">
-            <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+        <h3>Пополнение баланса</h3>
+        <div class="card" style="border-left:4px solid #e74c3c;background:rgba(231,76,60,0.05);">
+            <p style="margin:0;font-size:14px;line-height:1.7;">
                 ⚠️ <strong>ВАЖНО!</strong><br>
-                Вы должны сначала пополнить казну нации. Сделайте скриншот и отправьте: <strong>@Kolorli21</strong>
+                Сначала пополните казну нации. Сделайте скриншот и отправьте: <strong>@Kolorli21</strong>
             </p>
         </div>
         <input type="number" id="d-sum" placeholder="Сумма GOLD" min="1">
         <button onclick="requestDeposit()">Отправить запрос</button>
-        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+        <button onclick="showPage('main')" class="btn-nav">← Назад</button>
     </div>
 
+    <!-- ПЕРЕВОД -->
     <div id="transfer-screen" class="hidden">
         <h3>Перевод средств</h3>
         <div class="card">
@@ -170,40 +516,162 @@
             <input type="number" id="t-sum" placeholder="Сумма">
             <button onclick="action('transfer')">Перевести</button>
         </div>
-        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+        <button onclick="showPage('main')" class="btn-nav">← Назад</button>
     </div>
 
+    <!-- СНЯТИЕ -->
     <div id="withdraw-screen" class="hidden">
         <h3>Снятие средств</h3>
         <div class="card">
             <input type="number" id="w-sum" placeholder="Сумма">
             <button onclick="action('withdraw')">Запросить выплату</button>
         </div>
-        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+        <button onclick="showPage('main')" class="btn-nav">← Назад</button>
     </div>
 
+    <!-- МОИ ОБЛИГАЦИИ -->
     <div id="bonds-screen" class="hidden">
         <h3>Ваши инвестиции</h3>
         <div id="bonds-list"></div>
-        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+        <button onclick="showPage('main')" class="btn-nav">← Назад</button>
     </div>
 
+    <!-- МАГАЗИН -->
     <div id="market-screen" class="hidden">
         <h3>Магазин облигаций</h3>
         <div id="market-list"></div>
-        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+        <button onclick="showPage('main')" class="btn-nav">← Назад</button>
     </div>
 
+    <!-- ЖАЛОБА -->
     <div id="complaint-screen" class="hidden">
         <h3>Обратная связь</h3>
         <div class="card">
-            <textarea id="complaint-text" placeholder="Опишите вашу проблему..." maxlength="500"></textarea>
-            <div style="font-size: 12px; opacity: 0.6; text-align: right;" id="char-count">0/500</div>
+            <textarea id="complaint-text" placeholder="Опишите вашу проблему..." maxlength="500" rows="4"></textarea>
+            <div style="font-size:12px;opacity:0.5;text-align:right;" id="char-count">0/500</div>
             <button onclick="action('complaint')" id="submit-complaint-btn">Отправить</button>
-            <div id="complaint-timer" style="font-size: 13px; color: #ff6b6b; text-align: center; margin-top: 10px;"></div>
+            <div id="complaint-timer" style="font-size:13px;color:#ff7070;text-align:center;margin-top:10px;"></div>
         </div>
-        <button onclick="showPage('main')" class="nav-btn">Назад</button>
+        <button onclick="showPage('main')" class="btn-nav">← Назад</button>
     </div>
+
+    <!-- ═══════════════ КАЗИНО ═══════════════ -->
+    <div id="casino-screen" class="hidden">
+        <div class="casino-header">
+            <h2>🎰 КАЗИНО</h2>
+            <p style="opacity:0.5;font-size:13px;margin:4px 0 0;">Испытайте удачу. Играйте ответственно.</p>
+        </div>
+
+        <div class="casino-stats">
+            <div class="stat-box">
+                <div class="stat-val" id="casino-balance">0</div>
+                <div class="stat-lbl">БАЛАНС</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="casino-wins" style="color:#4ade80;">0</div>
+                <div class="stat-lbl">ПОБЕД</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="casino-losses" style="color:#f87171;">0</div>
+                <div class="stat-lbl">ПОРАЖЕНИЙ</div>
+            </div>
+        </div>
+
+        <div class="casino-tabs">
+            <div class="casino-tab active" onclick="switchGame('slots')">🎰<br>Слоты</div>
+            <div class="casino-tab" onclick="switchGame('coinflip')">🪙<br>Монетка</div>
+            <div class="casino-tab" onclick="switchGame('dice')">🎲<br>Кости</div>
+        </div>
+
+        <!-- СЛОТЫ -->
+        <div id="game-slots" class="casino-game active">
+            <div class="slots-machine">
+                <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;opacity:0.5;margin-bottom:10px;">SWEDEN SLOTS</div>
+                <div class="slots-reels">
+                    <div class="reel" id="reel0">🍒</div>
+                    <div class="reel" id="reel1">🍋</div>
+                    <div class="reel" id="reel2">🍊</div>
+                </div>
+                <div class="slots-divider"></div>
+                <div style="font-size:11px;opacity:0.4;letter-spacing:1px;">
+                    2 одинаковых = x0.5 &nbsp;|&nbsp; 3 одинаковых = x1.5–x15
+                </div>
+            </div>
+
+            <div style="font-size:12px;opacity:0.5;margin-bottom:6px;letter-spacing:1px;">СТАВКА (мин. 10 GOLD)</div>
+            <div class="quick-bets">
+                <div class="quick-bet" onclick="setBet('slots',10)">10</div>
+                <div class="quick-bet" onclick="setBet('slots',50)">50</div>
+                <div class="quick-bet" onclick="setBet('slots',100)">100</div>
+                <div class="quick-bet" onclick="setBet('slots',500)">500</div>
+            </div>
+            <input type="number" id="slots-bet" placeholder="Введите ставку..." min="10">
+            <button onclick="playCasino('slots')" id="slots-btn">🎰 КРУТИТЬ</button>
+
+            <div class="casino-result hidden" id="slots-result">
+                <span class="result-text" id="slots-result-text"></span>
+            </div>
+        </div>
+
+        <!-- МОНЕТКА -->
+        <div id="game-coinflip" class="casino-game">
+            <div class="coinflip-area">
+                <div class="big-coin" id="coin-display">🪙</div>
+                <div style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;opacity:0.6;margin-bottom:16px;">ВЫБЕРИТЕ СТОРОНУ</div>
+                <div class="coin-choices">
+                    <div class="coin-choice" id="choice-heads" onclick="selectCoin('орёл')">🦅<br>ОРЁЛ</div>
+                    <div class="coin-choice" id="choice-tails" onclick="selectCoin('решка')">👑<br>РЕШКА</div>
+                </div>
+            </div>
+
+            <div style="font-size:12px;opacity:0.5;margin-bottom:6px;letter-spacing:1px;">СТАВКА (мин. 10 GOLD)</div>
+            <div class="quick-bets">
+                <div class="quick-bet" onclick="setBet('flip',10)">10</div>
+                <div class="quick-bet" onclick="setBet('flip',50)">50</div>
+                <div class="quick-bet" onclick="setBet('flip',100)">100</div>
+                <div class="quick-bet" onclick="setBet('flip',500)">500</div>
+            </div>
+            <input type="number" id="flip-bet" placeholder="Введите ставку..." min="10">
+            <button onclick="playCasino('coinflip')" id="flip-btn">🪙 БРОСИТЬ МОНЕТУ</button>
+
+            <div class="casino-result hidden" id="flip-result">
+                <span class="result-text" id="flip-result-text"></span>
+            </div>
+        </div>
+
+        <!-- КОСТИ -->
+        <div id="game-dice" class="casino-game">
+            <div class="dice-area">
+                <div class="big-dice" id="dice-display">🎲</div>
+                <div style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;opacity:0.6;margin-bottom:16px;">ВЫБЕРИТЕ ЧИСЛО</div>
+                <div class="dice-grid">
+                    <div class="dice-btn" onclick="selectDice(1)">1️⃣</div>
+                    <div class="dice-btn" onclick="selectDice(2)">2️⃣</div>
+                    <div class="dice-btn" onclick="selectDice(3)">3️⃣</div>
+                    <div class="dice-btn" onclick="selectDice(4)">4️⃣</div>
+                    <div class="dice-btn" onclick="selectDice(5)">5️⃣</div>
+                    <div class="dice-btn" onclick="selectDice(6)">6️⃣</div>
+                </div>
+            </div>
+
+            <div style="font-size:12px;opacity:0.5;margin-bottom:6px;letter-spacing:1px;">СТАВКА (мин. 10 GOLD) · Выигрыш x5</div>
+            <div class="quick-bets">
+                <div class="quick-bet" onclick="setBet('dice',10)">10</div>
+                <div class="quick-bet" onclick="setBet('dice',50)">50</div>
+                <div class="quick-bet" onclick="setBet('dice',100)">100</div>
+                <div class="quick-bet" onclick="setBet('dice',500)">500</div>
+            </div>
+            <input type="number" id="dice-bet" placeholder="Введите ставку..." min="10">
+            <button onclick="playCasino('dice')" id="dice-btn">🎲 БРОСИТЬ КОСТИ</button>
+
+            <div class="casino-result hidden" id="dice-result">
+                <span class="result-text" id="dice-result-text"></span>
+            </div>
+        </div>
+
+        <button onclick="showPage('main')" class="btn-nav" style="margin-top:20px;">← Назад</button>
+    </div>
+    <!-- ═══════════════════════════════════════ -->
 
     <div class="social-links">
         <a href="https://discord.gg/EyR2t2rtPm" target="_blank">
@@ -219,132 +687,293 @@
         tg.expand();
         const params = new URLSearchParams(window.location.search);
         const RENDER_URL = "https://swedfixk.onrender.com";
-        
+
         let syncInterval = null;
         let canComplain = true;
 
+        // ─── Casino state ───
+        let casinoWins = 0, casinoLosses = 0;
+        let selectedCoin = null;
+        let selectedDice = null;
+
+        const diceEmojis = ['','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣'];
+        const slotSymbols = ['🍒','🍋','🍊','🍇','⭐','💎','7️⃣'];
+        const slotWeights = [30, 25, 20, 15, 6, 3, 1];
+        const slotMultipliers = { '🍒':1.5, '🍋':1.8, '🍊':2.0, '🍇':2.5, '⭐':4.0, '💎':8.0, '7️⃣':15.0 };
+
+        function weightedRandom() {
+            const total = slotWeights.reduce((a,b) => a+b, 0);
+            let n = Math.floor(Math.random() * total);
+            for (let i = 0; i < slotWeights.length; i++) {
+                n -= slotWeights[i];
+                if (n < 0) return slotSymbols[i];
+            }
+            return slotSymbols[0];
+        }
+
+        // ─── Navigation ───
         function showPage(page) {
-            ['reg', 'main', 'transfer', 'withdraw', 'bonds', 'market', 'complaint', 'deposit'].forEach(p => {
+            ['reg','main','transfer','withdraw','bonds','market','complaint','deposit','casino'].forEach(p => {
                 const el = document.getElementById(p + '-screen');
                 if (el) el.classList.add('hidden');
             });
             document.getElementById(page + '-screen').classList.remove('hidden');
+            if (page === 'casino') updateCasinoBalance();
         }
 
+        function switchGame(game) {
+            document.querySelectorAll('.casino-game').forEach(g => g.classList.remove('active'));
+            document.querySelectorAll('.casino-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('game-' + game).classList.add('active');
+            const tabs = document.querySelectorAll('.casino-tab');
+            const idx = ['slots','coinflip','dice'].indexOf(game);
+            tabs[idx].classList.add('active');
+        }
+
+        function updateCasinoBalance() {
+            const bal = document.getElementById('u-bal').innerText.replace(' GOLD','');
+            document.getElementById('casino-balance').innerText = parseFloat(bal).toFixed(0);
+        }
+
+        // ─── Casino UI helpers ───
+        function setBet(game, amount) {
+            const map = { slots: 'slots-bet', flip: 'flip-bet', dice: 'dice-bet' };
+            document.getElementById(map[game]).value = amount;
+        }
+
+        function selectCoin(choice) {
+            selectedCoin = choice;
+            document.getElementById('choice-heads').classList.toggle('selected', choice === 'орёл');
+            document.getElementById('choice-tails').classList.toggle('selected', choice === 'решка');
+        }
+
+        function selectDice(num) {
+            selectedDice = num;
+            document.querySelectorAll('.dice-btn').forEach((b,i) => b.classList.toggle('selected', i+1 === num));
+        }
+
+        // ─── Casino logic (mirrors Go casino.go) ───
+        function playSlots(bet) {
+            const s = [weightedRandom(), weightedRandom(), weightedRandom()];
+            if (s[0] === s[1] && s[1] === s[2]) {
+                return { win: true, mult: slotMultipliers[s[0]], symbols: s,
+                    msg: `🎉 ДЖЕКПОТ! Три ${s[0]}!\n💰 Выигрыш: ${(bet * slotMultipliers[s[0]]).toFixed(2)} GOLD (x${slotMultipliers[s[0]]})` };
+            }
+            if (s[0]===s[1] || s[1]===s[2] || s[0]===s[2]) {
+                return { win: true, mult: 0.5, symbols: s,
+                    msg: `😅 Два одинаковых! Возврат: ${(bet * 0.5).toFixed(2)} GOLD` };
+            }
+            return { win: false, mult: 0, symbols: s,
+                msg: `😔 Не повезло! Потеряно ${bet.toFixed(2)} GOLD` };
+        }
+
+        function playCoinflip(bet, choice) {
+            const win = Math.random() < 0.47;
+            const result = win ? choice : (choice === 'орёл' ? 'решка' : 'орёл');
+            const emoji = result === 'орёл' ? '🦅 ОРЁЛ' : '👑 РЕШКА';
+            if (win) return { win: true, mult: 1.9, result,
+                msg: `${emoji}\n✅ Угадали! Выигрыш: ${(bet * 1.9).toFixed(2)} GOLD` };
+            return { win: false, mult: 0, result,
+                msg: `${emoji}\n❌ Не угадали! Потеряно ${bet.toFixed(2)} GOLD` };
+        }
+
+        function playDiceGame(bet, guess) {
+            const rolled = Math.floor(Math.random() * 6) + 1;
+            const display = diceEmojis[rolled];
+            if (rolled === guess) return { win: true, mult: 5, rolled,
+                msg: `${display} Выпало ${rolled}\n🎯 Угадали! Выигрыш: ${(bet * 5).toFixed(2)} GOLD (x5)` };
+            return { win: false, mult: 0, rolled,
+                msg: `${display} Выпало ${rolled}\n😔 Вы поставили ${diceEmojis[guess]}. Потеряно ${bet.toFixed(2)} GOLD` };
+        }
+
+        // ─── Play handler ───
+        async function playCasino(type) {
+            const betInputs = { slots: 'slots-bet', coinflip: 'flip-bet', dice: 'dice-bet' };
+            const bet = parseFloat(document.getElementById(betInputs[type]).value);
+            const currentBal = parseFloat(document.getElementById('u-bal').innerText.replace(' GOLD',''));
+
+            if (!bet || bet < 10) return tg.showAlert('Минимальная ставка: 10 GOLD');
+            if (bet > currentBal) return tg.showAlert('Недостаточно средств!');
+            if (type === 'coinflip' && !selectedCoin) return tg.showAlert('Выберите сторону монеты!');
+            if (type === 'dice' && !selectedDice) return tg.showAlert('Выберите число!');
+
+            // Disable button during animation
+            const btnMap = { slots: 'slots-btn', coinflip: 'flip-btn', dice: 'dice-btn' };
+            const btn = document.getElementById(btnMap[type]);
+            btn.disabled = true;
+
+            let result;
+
+            if (type === 'slots') {
+                // Animate reels
+                const reels = [document.getElementById('reel0'), document.getElementById('reel1'), document.getElementById('reel2')];
+                reels.forEach(r => r.classList.add('spinning'));
+                result = playSlots(bet);
+                await new Promise(r => setTimeout(r, 100));
+
+                // Stop reels one by one
+                for (let i = 0; i < 3; i++) {
+                    await new Promise(r => setTimeout(r, 400));
+                    reels[i].classList.remove('spinning');
+                    reels[i].innerText = result.symbols[i];
+                    if (result.win && result.mult > 0.5) reels[i].classList.add('win');
+                }
+                await new Promise(r => setTimeout(r, 300));
+                reels.forEach(r => setTimeout(() => r.classList.remove('win'), 2500));
+
+            } else if (type === 'coinflip') {
+                const coin = document.getElementById('coin-display');
+                coin.classList.add('flipping');
+                result = playCoinflip(bet, selectedCoin);
+                await new Promise(r => setTimeout(r, 1200));
+                coin.classList.remove('flipping');
+                coin.innerText = result.result === 'орёл' ? '🦅' : '👑';
+                await new Promise(r => setTimeout(r, 300));
+
+            } else if (type === 'dice') {
+                const dice = document.getElementById('dice-display');
+                dice.classList.add('rolling');
+                result = playDiceGame(bet, selectedDice);
+                await new Promise(r => setTimeout(r, 800));
+                dice.classList.remove('rolling');
+                dice.innerText = diceEmojis[result.rolled];
+                await new Promise(r => setTimeout(r, 300));
+            }
+
+            // Show result
+            const resDiv = document.getElementById(type === 'coinflip' ? 'flip-result' : type + '-result');
+            const resText = document.getElementById(type === 'coinflip' ? 'flip-result-text' : type + '-result-text');
+
+            resDiv.classList.remove('hidden', 'result-win', 'result-loss');
+            resDiv.classList.add(result.win ? 'result-win' : 'result-loss');
+            resText.innerText = result.msg;
+
+            // Send to bot
+            const payout = result.win ? (bet * result.mult) : 0;
+            tg.sendData(JSON.stringify({
+                action: 'casino',
+                game: type,
+                bet: bet,
+                win: result.win,
+                payout: payout,
+                nick: decodeURIComponent(params.get('nick') || 'User')
+            }));
+
+            // Update local balance
+            const newBal = result.win ? (currentBal - bet + bet * result.mult) : (currentBal - bet);
+            document.getElementById('u-bal').innerText = newBal.toFixed(2) + ' GOLD';
+            document.getElementById('casino-balance').innerText = newBal.toFixed(0);
+
+            if (result.win) casinoWins++; else casinoLosses++;
+            document.getElementById('casino-wins').innerText = casinoWins;
+            document.getElementById('casino-losses').innerText = casinoLosses;
+
+            btn.disabled = false;
+        }
+
+        // ─── Registration ───
         function register() {
             const nick = document.getElementById('reg-nick').value;
             const role = document.getElementById('reg-role').value;
-            if(!nick || !role) return alert("Заполните поля!");
-            tg.sendData(JSON.stringify({action: 'register', nick, role}));
+            if (!nick || !role) return tg.showAlert('Заполните все поля!');
+            tg.sendData(JSON.stringify({ action: 'register', nick, role }));
         }
 
         function requestDeposit() {
             const amount = parseFloat(document.getElementById('d-sum').value);
-            if(!amount || amount <= 0) return alert("Введите корректную сумму!");
-            
-            const confirmed = confirm(`Подтверждаете запрос на пополнение ${amount.toFixed(2)} GOLD?`);
-            if(confirmed) {
-                tg.sendData(JSON.stringify({
-                    action: 'deposit_request',
-                    amount: amount,
-                    nick: decodeURIComponent(params.get('nick') || "User")
-                }));
+            if (!amount || amount <= 0) return tg.showAlert('Введите корректную сумму!');
+            if (confirm(`Подтверждаете запрос на пополнение ${amount.toFixed(2)} GOLD?`)) {
+                tg.sendData(JSON.stringify({ action: 'deposit_request', amount, nick: decodeURIComponent(params.get('nick') || 'User') }));
             }
         }
 
         function action(type) {
-            const data = { action: type, nick: decodeURIComponent(params.get('nick') || "User") };
-            
-            if(type === 'transfer') {
+            const data = { action: type, nick: decodeURIComponent(params.get('nick') || 'User') };
+            if (type === 'transfer') {
                 data.target_id = document.getElementById('t-id').value;
                 data.amount = parseFloat(document.getElementById('t-sum').value);
-                if(!data.target_id) return alert("Выберите получателя!");
-                if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
-            } else if(type === 'withdraw') {
+                if (!data.target_id) return tg.showAlert('Выберите получателя!');
+                if (!data.amount || data.amount <= 0) return tg.showAlert('Ошибка суммы!');
+            } else if (type === 'withdraw') {
                 data.amount = parseFloat(document.getElementById('w-sum').value);
-                if(!data.amount || data.amount <= 0) return alert("Ошибка суммы!");
-            } else if(type === 'complaint') {
+                if (!data.amount || data.amount <= 0) return tg.showAlert('Ошибка суммы!');
+            } else if (type === 'complaint') {
                 data.complaint = document.getElementById('complaint-text').value.trim();
-                if(!data.complaint) return alert("Напишите текст жалобы!");
-                if(!canComplain) return alert("Вы сможете отправить жалобу позже!");
+                if (!data.complaint) return tg.showAlert('Напишите текст жалобы!');
+                if (!canComplain) return tg.showAlert('Подождите 12 часов!');
             }
             tg.sendData(JSON.stringify(data));
         }
 
         function buyBond(id, minPrice) {
             const amount = parseFloat(prompt(`Сумма (мин ${minPrice}):`, minPrice));
-            if(amount >= minPrice) {
-                tg.sendData(JSON.stringify({action: 'buy_bond', bond_id: parseInt(id), amount: amount}));
-            }
+            if (amount >= minPrice) tg.sendData(JSON.stringify({ action: 'buy_bond', bond_id: parseInt(id), amount }));
         }
 
         function sellBond(id, val) {
-            if(confirm(`Забрать ${val.toFixed(2)} GOLD?`)) {
-                tg.sendData(JSON.stringify({action: 'sell_bond', bond_id: parseInt(id)}));
-            }
+            if (confirm(`Забрать ${val.toFixed(2)} GOLD?`)) tg.sendData(JSON.stringify({ action: 'sell_bond', bond_id: parseInt(id) }));
         }
 
-        // Автообновление данных (каждые 7 сек)
+        // ─── Data sync ───
         async function refreshData() {
             const uid = params.get('tg_id');
             if (!uid) return;
             try {
-                const response = await fetch(`${RENDER_URL}/api/get_user_data?uid=${uid}`);
-                const data = await response.json();
-                
-                document.getElementById('u-bal').innerText = data.balance.toFixed(2) + " GOLD";
+                const res = await fetch(`${RENDER_URL}/api/get_user_data?uid=${uid}`);
+                const data = await res.json();
+                document.getElementById('u-bal').innerText = data.balance.toFixed(2) + ' GOLD';
                 if (data.info) document.getElementById('info-text').innerText = data.info;
-                
+                document.getElementById('casino-balance').innerText = data.balance.toFixed(0);
+
                 const bList = document.getElementById('bonds-list');
                 const bonds = data.bonds || [];
-                bList.innerHTML = bonds.length ? "" : "<p style='text-align:center; opacity:0.5;'>Нет вложений</p>";
+                bList.innerHTML = bonds.length ? '' : "<p style='text-align:center;opacity:0.4;'>Нет вложений</p>";
                 bonds.forEach(b => {
-                    const btn = b.can_withdraw 
-                        ? `<button onclick="sellBond(${b.id}, ${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
-                        : `<span class="lock-badge">🔒 Заблокировано</span>`;
-                    bList.innerHTML += `<div class="card"><b>${b.name}</b><br>💵 На счету: ${b.current_value.toFixed(2)}<br>${btn}</div>`;
+                    const btn = b.can_withdraw
+                        ? `<button onclick="sellBond(${b.id},${b.current_value})">💰 Снять ${b.current_value.toFixed(2)}</button>`
+                        : `<span class="lock-badge">🔒 Заблокировано администратором</span>`;
+                    bList.innerHTML += `<div class="card"><b>${b.name}</b><br>💵 На счету: ${b.current_value.toFixed(2)} GOLD<br>📅 С ${b.date}<br>${btn}</div>`;
                 });
-                
+
                 canComplain = data.can_complain;
                 document.getElementById('complaint-btn').disabled = !canComplain;
                 document.getElementById('submit-complaint-btn').disabled = !canComplain;
-                document.getElementById('complaint-timer').innerText = canComplain ? "" : "⏳ Подождите 12 часов";
-                
+                document.getElementById('complaint-timer').innerText = canComplain ? '' : '⏳ Следующая жалоба через 12 часов';
                 document.getElementById('sync-status').innerText = `✅ Обновлено ${new Date().toLocaleTimeString()}`;
-            } catch (err) {
-                document.getElementById('sync-status').innerText = `⚠️ Ошибка синхронизации`;
+            } catch {
+                document.getElementById('sync-status').innerText = '⚠️ Ошибка синхронизации';
             }
         }
 
         async function refreshUsers() {
             try {
-                const response = await fetch(`${RENDER_URL}/api/get_users`);
-                const users = await response.json();
+                const res = await fetch(`${RENDER_URL}/api/get_users`);
+                const users = await res.json();
                 const sel = document.getElementById('t-id');
                 const cur = sel.value;
-                sel.innerHTML = '<option value="" disabled selected>Кому переводим?</option>';
+                sel.innerHTML = '<option value="" disabled selected>Выберите получателя</option>';
                 users.forEach(u => {
-                    if(u.id !== params.get('tg_id')) sel.innerHTML += `<option value="${u.id}">${u.nick}</option>`;
+                    if (u.id !== params.get('tg_id')) sel.innerHTML += `<option value="${u.id}">${u.nick}</option>`;
                 });
                 if (cur) sel.value = cur;
-            } catch (err) {}
+            } catch {}
         }
 
         async function refreshMarket() {
             try {
-                const response = await fetch(`${RENDER_URL}/api/get_market`);
-                const market = await response.json();
+                const res = await fetch(`${RENDER_URL}/api/get_market`);
+                const market = await res.json();
                 const mList = document.getElementById('market-list');
-                mList.innerHTML = market.length ? "" : "<p style='text-align:center; opacity:0.5;'>Магазин пуст</p>";
+                mList.innerHTML = market.length ? '' : "<p style='text-align:center;opacity:0.4;'>Магазин пуст</p>";
                 market.forEach(m => {
-                    mList.innerHTML += `<div class="market-item"><b>${m.name}</b><br>📊 Доходность: ${m.rate}%<br>💰 От ${m.price} GOLD<br><button onclick="buyBond(${m.id}, ${m.price})">Купить</button></div>`;
+                    mList.innerHTML += `<div class="market-item"><b>${m.name}</b><br>📊 Доходность: ${m.rate}% / день<br>💰 От ${m.price} GOLD<br><button onclick="buyBond(${m.id},${m.price})" style="margin-top:10px;">Купить</button></div>`;
                 });
-            } catch (err) {}
+            } catch {}
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             const tx = document.getElementById('complaint-text');
-            if(tx) tx.addEventListener('input', function() {
+            if (tx) tx.addEventListener('input', function () {
                 document.getElementById('char-count').innerText = `${this.value.length}/500`;
             });
         });
@@ -356,10 +985,9 @@
                 showPage('reg');
             } else {
                 showPage('main');
-                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || "User");
-                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || "");
-                document.getElementById('u-bal').innerText = (params.get('bal') || "0.00") + " GOLD";
-                
+                document.getElementById('u-nick').innerText = decodeURIComponent(params.get('nick') || 'User');
+                document.getElementById('u-role').innerText = decodeURIComponent(params.get('role') || '');
+                document.getElementById('u-bal').innerText = (params.get('bal') || '0.00') + ' GOLD';
                 refreshData(); refreshUsers(); refreshMarket();
                 syncInterval = setInterval(refreshData, 7000);
                 setInterval(() => { refreshUsers(); refreshMarket(); }, 30000);
