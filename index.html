@@ -851,6 +851,10 @@
             // Отправляем на сервер через fetch (не закрывает WebApp!)
             const payout = result.win ? (bet * result.mult) : 0;
             const uid = params.get('tg_id');
+
+            // Визуальный дебаг для Telegram WebApp
+            resText.innerText = result.msg + '\n\n⏳ Отправка на сервер...';
+
             try {
                 const resp = await fetch(`${RENDER_URL}/api/casino?uid=${uid}`, {
                     method: 'POST',
@@ -862,19 +866,32 @@
                         payout: payout
                     })
                 });
+
+                if (!resp.ok) {
+                    resText.innerText = result.msg + `\n\n⚠️ Сервер: ${resp.status}`;
+                    btn.disabled = false;
+                    return;
+                }
+
                 const data = await resp.json();
+
                 if (data.error) {
-                    resText.innerText = '❌ ' + data.error;
+                    resText.innerText = result.msg + '\n\n❌ ' + data.error;
                     resDiv.classList.remove('result-win');
                     resDiv.classList.add('result-loss');
                     btn.disabled = false;
                     return;
                 }
-                // Обновляем баланс из ответа сервера
+
+                // Успех — обновляем баланс из ответа сервера
                 document.getElementById('u-bal').innerText = data.balance.toFixed(2) + ' GOLD';
                 document.getElementById('casino-balance').innerText = data.balance.toFixed(0);
+                resText.innerText = result.msg;
+
             } catch(e) {
-                // Если сервер недоступен — обновляем локально
+                // Показываем текст ошибки прямо в интерфейсе
+                resText.innerText = result.msg + '\n\n⚠️ Ошибка: ' + e.message;
+                // Обновляем баланс локально как fallback
                 const newBal = result.win ? (currentBal - bet + bet * result.mult) : (currentBal - bet);
                 document.getElementById('u-bal').innerText = newBal.toFixed(2) + ' GOLD';
                 document.getElementById('casino-balance').innerText = newBal.toFixed(0);
